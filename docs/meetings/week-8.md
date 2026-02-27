@@ -1,8 +1,8 @@
-# Week 7 Update
+# Week 8 Update
 
 Feb 23 - Mar 1
 
-- [Meeting Minutes](https://github.com/mayxly/cs446/blob/main/docs/meetings/week-7.md)
+- [Meeting Minutes](https://github.com/mayxly/cs446/blob/main/docs/meetings/week-8.md)
 - Alena, Jodie, Edward, Jonathan rehearsed for prototype presentation
 - All members discussed feedback from TAs after the prototype presentation
 - Worked together to draft rough timeline for implementation
