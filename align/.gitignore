@@ -1,5 +1,9 @@
 *.iml
-.idea
+.idea/*
+!.idea/codeStyles
+!.idea/inspectionProfiles
+!.idea/runConfigurations
+!.idea/vcs.xml
 .gradle
 /local.properties
 .DS_Store
