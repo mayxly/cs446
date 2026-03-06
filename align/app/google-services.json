@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "952809203843",
+    "project_id": "cs446-align-a873b",
+    "storage_bucket": "cs446-align-a873b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952809203843:android:0f4e4de0c35aaaa73493b6",
+        "android_client_info": {
+          "package_name": "com.builderbears.align"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmBD3ou99nfyclk1rdYl0BooV6l1nvUF4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
