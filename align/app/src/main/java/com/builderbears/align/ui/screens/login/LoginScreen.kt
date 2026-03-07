@@ -2,12 +2,14 @@ package com.builderbears.align.ui.screens.login
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
@@ -23,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +34,7 @@ import com.builderbears.align.ui.components.LoginMode
 import com.builderbears.align.ui.components.LoginTextField
 import com.builderbears.align.ui.components.LoginToggle
 import com.builderbears.align.ui.theme.DisplayStyle
+import com.builderbears.align.ui.theme.HeadingStyle2
 import com.builderbears.align.ui.theme.Indigo
 import com.builderbears.align.ui.theme.LabelLarge
 import com.builderbears.align.ui.theme.LabelMedium
@@ -42,29 +46,35 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
     onLoginSuccess: () -> Unit
 ) {
-    // Outer Box for the gradient background
     DefaultGradientBackground {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.fillMaxSize()) {
 
-            Text(
-                text = "align",
-                style = DisplayStyle.copy(fontSize = 48.sp),
-                color = TextPrimary
-            )
-            Text(
-                text = "workout together.",
-                style = LabelLarge,
-                color = TextMuted
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
+            // Title centered to the FULL screen
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.Top)
+                    .padding(top = LocalConfiguration.current.screenHeightDp.dp * 0.35f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "align",
+                    style = DisplayStyle.copy(fontSize = 48.sp),
+                    color = TextPrimary
+                )
+                Text(
+                    text = "workout together.",
+                    style = HeadingStyle2,
+                    color = TextMuted
+                )
+            }
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
@@ -115,8 +125,10 @@ fun LoginScreen(
                         )
                     }
 
-                    viewModel.errorMessage?.let {
-                        Text(it, color = Color.Red, style = LabelMedium)
+                    Box(modifier = Modifier.fillMaxWidth().height(20.dp)) {
+                        viewModel.errorMessage?.let {
+                            Text(it, color = Color.Red, style = LabelMedium)
+                        }
                     }
 
                     Button(

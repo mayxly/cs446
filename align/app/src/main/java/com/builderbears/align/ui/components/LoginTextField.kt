@@ -81,7 +81,10 @@ fun LoginTextField(
                     singleLine = true,
                     decorationBox = { innerTextField ->
                         if (value.isEmpty()) {
-                            Text(text = placeholder, style = Micro, color = TextMuted)
+                            Text(text = placeholder,
+                                style = Micro,
+                                color = TextMuted.copy(alpha = 0.45f)
+                            )
                         }
                         innerTextField()
                     }
