@@ -31,16 +31,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.ui.theme.GridBottomLeft
+import com.builderbears.align.ui.theme.GridBottomRight
+import com.builderbears.align.ui.theme.GridTopLeft
+import com.builderbears.align.ui.theme.GridTopRight
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 private val PrimaryBlue   = Color(0xFF4353E8)
 private val LightBlue     = Color(0xFFEEF0FD)
-private val GridTopLeft     = Color(0xB3BDE0F8)
-private val GridTopRight    = Color(0xB3F7C8E0)
-private val GridBottomLeft  = Color(0xB3FAF0A0)
-private val GridBottomRight = Color(0xB3C2F0D8)
 private val CardWhite     = Color(0xFFFFFFFF)
 private val TextPrimary   = Color(0xFF1A1A2E)
 private val TextSecondary = Color(0xFF9E9E9E)

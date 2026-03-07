@@ -15,7 +15,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,12 +30,14 @@ import androidx.navigation.compose.*
 
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.screens.feed.FeedScreen
+import com.builderbears.align.ui.screens.login.LoginScreen
 import com.builderbears.align.ui.screens.schedule.ScheduleScreen
 import com.builderbears.align.ui.screens.you.YouScreen
 import com.builderbears.align.ui.theme.NavBarBackground
 import com.builderbears.align.ui.theme.NavBarHighlight
 import com.builderbears.align.ui.theme.NavBarSelected
 import com.builderbears.align.ui.theme.NavBarUnselected
+import com.google.firebase.auth.FirebaseAuth
 
 private data class NavItem(
     val route: Route,
@@ -55,6 +59,18 @@ fun AlignApp() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Check if logged in, if not then go to LoginScreen
+    var isLoggedIn by remember {
+        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+    }
+
+    if (!isLoggedIn) {
+        LoginScreen(
+            onLoginSuccess = { isLoggedIn = true }
+        )
+        return
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
         // Main screen area
@@ -70,7 +86,7 @@ fun AlignApp() {
                 composable(Route.AddActivity.path) { AddActivityScreen() }
                 composable(Route.Feed.path) { FeedScreen() }
                 composable(Route.Schedule.path) { ScheduleScreen() }
-                composable(Route.You.path) { YouScreen() }
+                composable(Route.You.path) { YouScreen(onLogout = { isLoggedIn = false }) }
             }
         }
 
