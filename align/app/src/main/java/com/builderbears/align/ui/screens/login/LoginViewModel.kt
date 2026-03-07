@@ -75,6 +75,4 @@ class LoginViewModel : ViewModel() {
             isLoading = false
         }
     }
-
-    fun clearError() { errorMessage = null }
 }

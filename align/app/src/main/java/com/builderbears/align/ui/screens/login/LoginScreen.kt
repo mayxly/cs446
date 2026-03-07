@@ -36,7 +36,6 @@ import com.builderbears.align.ui.components.LoginToggle
 import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.HeadingStyle2
 import com.builderbears.align.ui.theme.Indigo
-import com.builderbears.align.ui.theme.LabelLarge
 import com.builderbears.align.ui.theme.LabelMedium
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
@@ -48,8 +47,6 @@ fun LoginScreen(
 ) {
     DefaultGradientBackground {
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // Title centered to the FULL screen
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
