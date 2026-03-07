@@ -9,11 +9,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-
-import com.builderbears.align.ui.theme.GridTopLeft
-import com.builderbears.align.ui.theme.GridTopRight
-import com.builderbears.align.ui.theme.GridBottomLeft
-import com.builderbears.align.ui.theme.GridBottomRight
+import com.builderbears.align.ui.theme.GradientBlue
+import com.builderbears.align.ui.theme.GradientMint
+import com.builderbears.align.ui.theme.GradientPink
+import com.builderbears.align.ui.theme.GradientYellow
 
 @Composable
 fun DefaultGradientBackground(content: @Composable BoxScope.() -> Unit) {
@@ -27,7 +26,7 @@ fun DefaultGradientBackground(content: @Composable BoxScope.() -> Unit) {
 
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridTopLeft, Color.Transparent),
+                        colors = listOf(GradientBlue, Color.Transparent),
                         center = Offset(0f, 0f),
                         radius = radius
                     ),
@@ -36,7 +35,7 @@ fun DefaultGradientBackground(content: @Composable BoxScope.() -> Unit) {
 
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridTopRight, Color.Transparent),
+                        colors = listOf(GradientPink, Color.Transparent),
                         center = Offset(w, 0f),
                         radius = radius
                     ),
@@ -45,7 +44,7 @@ fun DefaultGradientBackground(content: @Composable BoxScope.() -> Unit) {
 
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridBottomLeft, Color.Transparent),
+                        colors = listOf(GradientYellow, Color.Transparent),
                         center = Offset(0f, h),
                         radius = radius
                     ),
@@ -54,7 +53,7 @@ fun DefaultGradientBackground(content: @Composable BoxScope.() -> Unit) {
 
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridBottomRight, Color.Transparent),
+                        colors = listOf(GradientMint, Color.Transparent),
                         center = Offset(w, h),
                         radius = radius
                     ),

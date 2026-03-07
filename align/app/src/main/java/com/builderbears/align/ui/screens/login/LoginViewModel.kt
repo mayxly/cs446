@@ -20,6 +20,18 @@ class LoginViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
     var isLoading by mutableStateOf(false)
 
+    private fun clearFields() {
+        email = ""
+        password = ""
+        displayName = ""
+        errorMessage = null
+    }
+
+    fun onAuthModeChange(mode: LoginMode) {
+        authMode = mode
+        clearFields()
+    }
+
     fun onLogin(onSuccess: () -> Unit) {
         if (email.isBlank() || password.isBlank()) {
             errorMessage = "Please fill in all fields."
@@ -28,7 +40,10 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             userService.loginUser(email, password)
-                .onSuccess { onSuccess() }
+                .onSuccess {
+                    clearFields()
+                    onSuccess()
+                }
                 .onFailure { errorMessage = "Incorrect email or password. Please try again." }
             isLoading = false
         }
@@ -46,7 +61,10 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             userService.createUser(displayName, email, password)
-                .onSuccess { onSuccess() }
+                .onSuccess {
+                    clearFields()
+                    onSuccess()
+                }
                 .onFailure { e ->
                     errorMessage = when {
                         e.message?.contains("email address is already in use") == true ->

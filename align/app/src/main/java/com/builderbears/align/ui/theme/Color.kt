@@ -29,8 +29,3 @@ val NavBarBackground = Color(0xFFEDE7F6)
 val NavBarSelected = Color(0xFF4F46E5)
 val NavBarUnselected = Color(0xFF49454F)
 val NavBarHighlight = Color(0xFFD9D0F0)
-
-val GridTopLeft     = Color(0xB3BDE0F8)
-val GridTopRight    = Color(0xB3F7C8E0)
-val GridBottomLeft  = Color(0xB3FAF0A0)
-val GridBottomRight = Color(0xB3C2F0D8)

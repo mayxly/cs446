@@ -15,6 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.builderbears.align.ui.theme.LabelMedium
+import com.builderbears.align.ui.theme.TextPrimary
+import com.builderbears.align.ui.theme.TextMuted
 
 enum class LoginMode { LOGIN, SIGNUP }
 
@@ -26,32 +29,28 @@ fun LoginToggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFFF0F0F0))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF0EEF8))
             .padding(4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(50))
-                .background(if (selected == LoginMode.LOGIN) Color.White else Color.Transparent)
-                .clickable { onToggle(LoginMode.LOGIN) }
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Log in", fontWeight = if (selected == LoginMode.LOGIN) FontWeight.Bold else FontWeight.Normal)
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(50))
-                .background(if (selected == LoginMode.SIGNUP) Color.White else Color.Transparent)
-                .clickable { onToggle(LoginMode.SIGNUP) }
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Sign up", fontWeight = if (selected == LoginMode.SIGNUP) FontWeight.Bold else FontWeight.Normal)
+        LoginMode.entries.forEach { mode ->
+            val isSelected = selected == mode
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) Color.White else Color.Transparent)
+                    .clickable { onToggle(mode) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (mode == LoginMode.LOGIN) "Log in" else "Sign up",
+                    style = LabelMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) TextPrimary else TextMuted
+                )
+            }
         }
     }
 }
