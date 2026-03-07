@@ -327,7 +327,16 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
         Spacer(Modifier.height(24.dp))
 
         Button(
-            onClick = { /* implement later */ },
+            onClick = {
+                viewModel.saveActivity(
+                    name = activityName,
+                    description = description,
+                    workoutType = workoutType,
+                    location = location,
+                    date = selectedDate?.toString() ?: "",
+                    time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}"
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
