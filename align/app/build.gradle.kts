@@ -57,6 +57,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx:23.2.0")
     implementation("com.google.firebase:firebase-analytics")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.0")
+    implementation(libs.androidx.foundation.layout.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

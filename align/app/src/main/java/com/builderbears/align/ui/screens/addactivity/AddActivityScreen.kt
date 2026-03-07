@@ -6,7 +6,19 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,14 +28,25 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -31,16 +54,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.ui.theme.GradientBlue
+import com.builderbears.align.ui.theme.GradientMint
+import com.builderbears.align.ui.theme.GradientPink
+import com.builderbears.align.ui.theme.GradientYellow
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 private val PrimaryBlue   = Color(0xFF4353E8)
 private val LightBlue     = Color(0xFFEEF0FD)
-private val GridTopLeft     = Color(0xB3BDE0F8)
-private val GridTopRight    = Color(0xB3F7C8E0)
-private val GridBottomLeft  = Color(0xB3FAF0A0)
-private val GridBottomRight = Color(0xB3C2F0D8)
 private val CardWhite     = Color(0xFFFFFFFF)
 private val TextPrimary   = Color(0xFF1A1A2E)
 private val TextSecondary = Color(0xFF9E9E9E)
@@ -88,7 +111,7 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
 
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridTopLeft, Color.Transparent),
+                        colors = listOf(GradientBlue, Color.Transparent),
                         center = Offset(0f, 0f),
                         radius = radius
                     ),
@@ -96,7 +119,7 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                 )
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridTopRight, Color.Transparent),
+                        colors = listOf(GradientPink, Color.Transparent),
                         center = Offset(w, 0f),
                         radius = radius
                     ),
@@ -104,7 +127,7 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                 )
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridBottomLeft, Color.Transparent),
+                        colors = listOf(GradientYellow, Color.Transparent),
                         center = Offset(0f, h),
                         radius = radius
                     ),
@@ -112,7 +135,7 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                 )
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GridBottomRight, Color.Transparent),
+                        colors = listOf(GradientMint, Color.Transparent),
                         center = Offset(w, h),
                         radius = radius
                     ),

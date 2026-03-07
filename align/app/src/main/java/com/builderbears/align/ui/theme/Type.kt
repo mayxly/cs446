@@ -1,29 +1,20 @@
 package com.builderbears.align.ui.theme
 
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
-import androidx.compose.ui.unit.sp
 import com.builderbears.align.R
-
-val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
+import androidx.compose.ui.unit.sp
 
 val Lora = FontFamily(
-    Font(googleFont = GoogleFont("Lora"), fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = GoogleFont("Lora"), fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = GoogleFont("Lora"), fontProvider = provider, weight = FontWeight.Bold)
+    Font(R.font.lora_bold, weight = FontWeight.Bold),
+    Font(R.font.lora_semibold, weight = FontWeight.SemiBold)
 )
 
 val Manrope = FontFamily(
-    Font(googleFont = GoogleFont("Manrope"), fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = GoogleFont("Manrope"), fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = GoogleFont("Manrope"), fontProvider = provider, weight = FontWeight.Bold)
+    Font(R.font.manrope_bold, weight = FontWeight.Bold),
+    Font(R.font.manrope_semibold, weight = FontWeight.SemiBold)
 )
 
 val DisplayStyle = TextStyle(
