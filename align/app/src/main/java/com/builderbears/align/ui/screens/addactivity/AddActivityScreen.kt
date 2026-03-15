@@ -54,21 +54,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.LightBlue
+import com.builderbears.align.ui.theme.PrimaryBlue
+import com.builderbears.align.ui.theme.TextPrimary
+import com.builderbears.align.ui.theme.TextSecondary
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
-private val PrimaryBlue   = Color(0xFF4353E8)
-private val LightBlue     = Color(0xFFEEF0FD)
-private val CardWhite     = Color(0xFFFFFFFF)
-private val TextPrimary   = Color(0xFF1A1A2E)
-private val TextSecondary = Color(0xFF9E9E9E)
-private val BorderColor   = Color(0xFFE0E0E0)
-private val SelectedBorder = Color(0xFF4353E8)
 
 data class Friend(val id: Int, val name: String, val handle: String, val initials: String, val color: Color)
 
@@ -152,7 +151,7 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
             modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 16.dp)
         )
 
-        HorizontalDivider(color = BorderColor, thickness = 1.dp)
+        HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
         Spacer(Modifier.height(20.dp))
 
@@ -392,7 +391,7 @@ private fun WorkoutTypeGrid(selected: String, onSelect: (String) -> Unit, modifi
                             .aspectRatio(1f)
                             .border(
                                 width = if (isSelected) 2.dp else 0.dp,
-                                color = if (isSelected) SelectedBorder else Color.Transparent,
+                                color = if (isSelected) PrimaryBlue else Color.Transparent,
                                 shape = RoundedCornerShape(14.dp)
                             )
                             .clickable { onSelect(type) },
@@ -425,7 +424,7 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
             .fillMaxWidth()
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
-                color = if (isSelected) SelectedBorder else Color.Transparent,
+                color = if (isSelected) PrimaryBlue else Color.Transparent,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick),
@@ -461,7 +460,7 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
                     .size(24.dp)
                     .clip(CircleShape)
                     .background(if (isSelected) PrimaryBlue else Color.Transparent)
-                    .border(1.5.dp, if (isSelected) PrimaryBlue else BorderColor, CircleShape),
+                    .border(1.5.dp, if (isSelected) PrimaryBlue else BorderLight, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {

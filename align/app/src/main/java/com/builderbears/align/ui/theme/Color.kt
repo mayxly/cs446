@@ -10,21 +10,33 @@ val GradientYellow = Color(0xFFFAF0A0)
 val GradientMint = Color(0xFFC2F0D8)
 
 // Text
-val TextPrimary = Color(0xFF1A1A22)
-val TextSecondary = Color(0xFF4A4A5A)
+val TextPrimary = Color(0xFF1A1A2E)
+val TextSecondary = Color(0xFF9E9E9E)
 val TextMuted = Color(0xFF737387)
 
 // Borders
 val BorderPrimary = Color(0xFF1A1A22)
 val BorderSecondary = Color(0xFF4A4A5A)
 val BorderMuted = Color(0xFF737387)
+val BorderLight = Color(0xFFE0E0E0)
 
 // Primary
 val Indigo = Color(0xFF5B6BF0)
+val IndigoLight = Color(0x1F5B6BF0) // 12% opacity Indigo
+val PrimaryBlue = Color(0xFF4353E8)
+val PrimaryBlueLight = PrimaryBlue.copy(alpha = 0.12f)
+val LightBlue = Color(0xFFEEF0FD)
+
+// Cards
+val CardWhite = Color(0xFFFFFFFF)
+
+// Avatars
+val AvatarGreen = Color(0xFFC2E8D0)
 
 // Input field background
 val InputBackground = Color(0xFFF8F6FF)
 
+// Navigation
 val NavBarBackground = Color(0xFFEDE7F6)
 val NavBarSelected = Color(0xFF4F46E5)
 val NavBarUnselected = Color(0xFF49454F)
