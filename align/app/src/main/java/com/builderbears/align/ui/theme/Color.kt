@@ -54,3 +54,11 @@ val NavBarHighlight = Color(0xFFD9D0F0)
 
 // Error
 val ErrorRed = Color(0xFFE53935)
+
+// Inbox (TODO: TEMP until placeholderss are removed)
+val InboxItemBackground = Color(0xFFE8DFF5)
+val NotificationAccent = Color(0xFF2196F3)
+val AvatarPink = Color(0xFFEC96B7)
+val AvatarYellow = Color(0xFFFFC947)
+val AvatarGreen2 = Color(0xFF66BB6A)
+val AvatarOrange = Color(0xFFFFB74D)

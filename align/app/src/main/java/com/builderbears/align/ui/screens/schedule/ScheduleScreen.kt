@@ -17,10 +17,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,10 +32,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,9 +49,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.NotificationCountBadge
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
@@ -52,11 +66,13 @@ import com.builderbears.align.ui.theme.GradientYellow
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
+import com.builderbears.align.ui.theme.TextMuted
 
 
 @Composable
 fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
     val uiState = viewModel.uiState
+    var showInbox by remember { mutableStateOf(false) }
 
     // Refresh immediately on entering the screen to avoid showing stale data.
     LaunchedEffect(Unit) {
@@ -91,7 +107,7 @@ fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -106,28 +122,25 @@ fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
                     shape = RoundedCornerShape(12.dp),
                     color = CardWhite,
                     shadowElevation = 2.dp,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clickable { showInbox = true }
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
                             Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
+                            contentDescription = "Inbox",
                             tint = TextPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
                 }
-                Box(
+                NotificationCountBadge(
+                    count = 3,
                     modifier = Modifier
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE53935))
                         .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("3", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
+                        .offset(x = 4.dp, y = (-4).dp)
+                )
             }
         }
 
@@ -164,6 +177,12 @@ fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
                 Spacer(Modifier.height(100.dp))
             }
         }
+    }
+
+    if (showInbox) {
+        InboxScreen(
+            onDismiss = { showInbox = false }
+        )
     }
 }
 

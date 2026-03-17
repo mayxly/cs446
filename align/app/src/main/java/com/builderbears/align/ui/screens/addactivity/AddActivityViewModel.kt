@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -15,6 +16,7 @@ import java.time.LocalTime
 
 class AddActivityViewModel : ViewModel() {
     private val activityService = ActivityService()
+    private val userService = UserService()
 
     private val currentUserId: String
         get() = FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -82,7 +84,10 @@ class AddActivityViewModel : ViewModel() {
         workoutType: String,
         location: String,
         date: String,
-        time: String
+        time: String,
+        invitedIds: List<String> = emptyList(),
+        invitedNames: List<String> = emptyList(),
+        imageUrl: String? = null
     ) {
         if (currentUserId.isEmpty()) {
             saveError = "Not logged in"
@@ -93,13 +98,22 @@ class AddActivityViewModel : ViewModel() {
             isSaving = true
             saveError = null
 
+            // Add activity creator to metadata
+            val userResult = userService.getUser(currentUserId)
+            val userName = userResult.getOrNull()?.name ?: "Unknown User"
+
             val activity = Activity(
+                userId = currentUserId,
+                userName = userName,
                 name = name,
                 description = description,
                 workoutType = workoutType,
                 location = location,
                 date = date,
-                time = time
+                time = time,
+                invited = invitedIds,
+                invitedNames = invitedNames,
+                imageUrl = imageUrl
             )
 
             activityService.createActivity(currentUserId, activity)
