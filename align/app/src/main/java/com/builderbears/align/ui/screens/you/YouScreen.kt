@@ -2,6 +2,8 @@ package com.builderbears.align.ui.screens.you
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +71,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.data.service.NotificationService
 import com.builderbears.align.ui.theme.AvatarGreen
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -123,6 +126,12 @@ fun YouScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var pushNotificationsEnabled by remember { mutableStateOf(true) }
     var profileImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        pushNotificationsEnabled = granted
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -503,7 +512,13 @@ fun YouScreen(
                     }
                     Switch(
                         checked = pushNotificationsEnabled,
-                        onCheckedChange = { pushNotificationsEnabled = it },
+                        onCheckedChange = { enabled ->
+                            if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                pushNotificationsEnabled = enabled
+                            }
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = PrimaryBlue,
@@ -529,6 +544,11 @@ fun YouScreen(
 
         // Friends
         FriendsCard()
+
+        Spacer(Modifier.height(16.dp))
+
+        // Dev Tools
+        DevToolsCard(context)
 
         Spacer(Modifier.height(100.dp))
     }
@@ -807,6 +827,68 @@ private fun FriendsCard() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DevToolsCard(context: android.content.Context) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "Dev Tools",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            Text(
+                text = "Tap to fire a test notification",
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            DevToolButton("Test Friend Request") {
+                NotificationService.showFriendRequestNotification(context)
+            }
+            Spacer(Modifier.height(8.dp))
+            DevToolButton("Test Workout Invite") {
+                NotificationService.showWorkoutInviteNotification(context)
+            }
+            Spacer(Modifier.height(8.dp))
+            DevToolButton("Test Workout Reminder") {
+                NotificationService.showWorkoutReminderNotification(context)
+            }
+            Spacer(Modifier.height(8.dp))
+            DevToolButton("Test App Reminder") {
+                NotificationService.showAppReminderNotification(context)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DevToolButton(label: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = PrimaryBlueLight,
+            contentColor = PrimaryBlue
+        ),
+        elevation = ButtonDefaults.buttonElevation(0.dp)
+    ) {
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
