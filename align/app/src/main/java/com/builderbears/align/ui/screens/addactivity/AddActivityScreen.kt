@@ -1,6 +1,8 @@
 package com.builderbears.align.ui.screens.addactivity
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -94,7 +96,7 @@ private val friends = listOf(
 @Composable
 fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewModel = viewModel()) {
     val context = LocalContext.current
-    
+
     var activityName   by remember { mutableStateOf("") }
     var selectedDate   by remember { mutableStateOf<LocalDate?>(null) }
     var selectedHour   by remember { mutableStateOf(2) }
@@ -104,9 +106,17 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     var workoutType    by remember { mutableStateOf("Run") }
     var description    by remember { mutableStateOf("") }
     var invitedFriends by remember { mutableStateOf(setOf<Int>() ) }
+    var imageUrl       by remember { mutableStateOf<android.net.Uri?>(null) }
 
     var showCalendar   by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        imageUrl = uri
+    }
 
     LaunchedEffect(viewModel.saveSuccess) {
         if (viewModel.saveSuccess) {
@@ -119,6 +129,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             workoutType = "Run"
             description = ""
             invitedFriends = setOf<Int>()
+            imageUrl = null
             viewModel.saveSuccess = false
             navController.navigate(Route.Schedule.path) {
                 // Reset to root feed before showing schedule to keep backstack clean.
@@ -378,6 +389,26 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
 
         Spacer(Modifier.height(20.dp))
 
+        SectionLabel("IMAGE")
+        InputCard(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clickable { imagePickerLauncher.launch("image/*") }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = if (imageUrl != null) "📸 Image selected" else "📸 Add image",
+                    color = if (imageUrl != null) TextPrimary else TextSecondary,
+                    fontSize = 15.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
         SectionLabel("INVITE FRIENDS")
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -414,7 +445,10 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                         workoutType = workoutType,
                         location = location,
                         date = selectedDate?.toString() ?: "",
-                        time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}"
+                        time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
+                        invitedIds = invitedFriends.map { it.toString() },
+                        invitedNames = friends.filter { it.id in invitedFriends }.map { it.name },
+                        imageUrl = imageUrl.toString()
                     )
                 }
             },
