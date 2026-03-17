@@ -9,6 +9,9 @@ import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 class AddActivityViewModel : ViewModel() {
     private val activityService = ActivityService()
@@ -19,6 +22,59 @@ class AddActivityViewModel : ViewModel() {
     var isSaving by mutableStateOf(false)
     var saveError by mutableStateOf<String?>(null)
     var saveSuccess by mutableStateOf(false)
+
+    // Validation error states
+    var nameError by mutableStateOf<String?>(null)
+    var dateError by mutableStateOf<String?>(null)
+    var timeError by mutableStateOf<String?>(null)
+    var locationError by mutableStateOf<String?>(null)
+
+    fun validateFields(
+        name: String,
+        selectedDate: LocalDate?,
+        selectedHour: Int,
+        selectedMinute: Int,
+        isPm: Boolean,
+        location: String
+    ): Boolean {
+        nameError = null
+        dateError = null
+        timeError = null
+        locationError = null
+
+        var isValid = true
+
+        if (name.isBlank()) {
+            nameError = "Activity name is required"
+            isValid = false
+        }
+
+        if (selectedDate == null) {
+            dateError = "Please select a date"
+            isValid = false
+        }
+
+        if (selectedDate != null) {
+            val hour24 = if (isPm && selectedHour != 12) selectedHour + 12 else if (!isPm && selectedHour == 12) 0 else selectedHour
+            val selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(hour24, selectedMinute))
+            val now = LocalDateTime.now()
+
+            if (selectedDateTime.isBefore(now)) {
+                if (dateError == null) {
+                    dateError = "Date and time cannot be in the past"
+                    timeError = "Date and time cannot be in the past"
+                }
+                isValid = false
+            }
+        }
+
+        if (location.isBlank()) {
+            locationError = "Location is required"
+            isValid = false
+        }
+
+        return isValid
+    }
 
     fun saveActivity(
         name: String,

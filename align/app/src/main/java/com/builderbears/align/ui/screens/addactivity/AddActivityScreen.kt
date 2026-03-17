@@ -1,5 +1,6 @@
 package com.builderbears.align.ui.screens.addactivity
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -38,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,13 +51,17 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.builderbears.align.ui.navigation.Route
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
@@ -76,6 +82,8 @@ private val workoutTypes = listOf(
     "Swim" to "🏊", "Basketball" to "🏀", "HIIT" to "🔥", "Other" to "✨"
 )
 
+// TODO: Link this to actual data
+// Hardcoded for now
 private val friends = listOf(
     Friend(1, "Alex Kim",    "@alexkim",  "A", Color(0xFF4CAF50)),
     Friend(2, "Sam Reyes",   "@samreyes", "S", Color(0xFFE91E63)),
@@ -84,7 +92,9 @@ private val friends = listOf(
 )
 
 @Composable
-fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
+fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewModel = viewModel()) {
+    val context = LocalContext.current
+    
     var activityName   by remember { mutableStateOf("") }
     var selectedDate   by remember { mutableStateOf<LocalDate?>(null) }
     var selectedHour   by remember { mutableStateOf(2) }
@@ -93,10 +103,41 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
     var location       by remember { mutableStateOf("") }
     var workoutType    by remember { mutableStateOf("Run") }
     var description    by remember { mutableStateOf("") }
-    var invitedFriends by remember { mutableStateOf(setOf(2, 3)) }
+    var invitedFriends by remember { mutableStateOf(setOf<Int>() ) }
 
     var showCalendar   by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.saveSuccess) {
+        if (viewModel.saveSuccess) {
+            activityName = ""
+            selectedDate = null
+            selectedHour = 2
+            selectedMinute = 10
+            isPm = true
+            location = ""
+            workoutType = "Run"
+            description = ""
+            invitedFriends = setOf<Int>()
+            viewModel.saveSuccess = false
+            navController.navigate(Route.Schedule.path) {
+                // Reset to root feed before showing schedule to keep backstack clean.
+                popUpTo(Route.Feed.path) { inclusive = false }
+                launchSingleTop = true
+                restoreState = false
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel.saveError) {
+        if (viewModel.saveError != null) {
+            Toast.makeText(
+                context,
+                "Failed to create activity: ${viewModel.saveError}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -173,6 +214,14 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                 )
             }
         }
+        if (viewModel.nameError != null) {
+            Text(
+                text = viewModel.nameError!!,
+                fontSize = 12.sp,
+                color = ErrorRed,
+                modifier = Modifier.padding(start = 20.dp, top = 4.dp, end = 16.dp)
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
 
@@ -196,6 +245,14 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                     )
                 }
             }
+        }
+        if (viewModel.dateError != null) {
+            Text(
+                text = viewModel.dateError!!,
+                fontSize = 12.sp,
+                color = ErrorRed,
+                modifier = Modifier.padding(start = 20.dp, top = 4.dp, end = 16.dp)
+            )
         }
 
         AnimatedVisibility(visible = showCalendar, enter = expandVertically(), exit = shrinkVertically()) {
@@ -228,6 +285,14 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                     )
                 }
             }
+        }
+        if (viewModel.timeError != null) {
+            Text(
+                text = viewModel.timeError!!,
+                fontSize = 12.sp,
+                color = ErrorRed,
+                modifier = Modifier.padding(start = 20.dp, top = 4.dp, end = 16.dp)
+            )
         }
 
         AnimatedVisibility(visible = showTimePicker, enter = expandVertically(), exit = shrinkVertically()) {
@@ -262,6 +327,14 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+        if (viewModel.locationError != null) {
+            Text(
+                text = viewModel.locationError!!,
+                fontSize = 12.sp,
+                color = ErrorRed,
+                modifier = Modifier.padding(start = 20.dp, top = 4.dp, end = 16.dp)
+            )
         }
 
         Spacer(Modifier.height(20.dp))
@@ -327,14 +400,23 @@ fun AddActivityScreen(viewModel: AddActivityViewModel = viewModel()) {
 
         Button(
             onClick = {
-                viewModel.saveActivity(
+                if (viewModel.validateFields(
                     name = activityName,
-                    description = description,
-                    workoutType = workoutType,
-                    location = location,
-                    date = selectedDate?.toString() ?: "",
-                    time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}"
-                )
+                    selectedDate = selectedDate,
+                    selectedHour = selectedHour,
+                    selectedMinute = selectedMinute,
+                    isPm = isPm,
+                    location = location
+                )) {
+                    viewModel.saveActivity(
+                        name = activityName,
+                        description = description,
+                        workoutType = workoutType,
+                        location = location,
+                        date = selectedDate?.toString() ?: "",
+                        time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}"
+                    )
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()

@@ -83,7 +83,7 @@ fun AlignApp() {
                 navController = navController,
                 startDestination = Route.Feed.path
             ) {
-                composable(Route.AddActivity.path) { AddActivityScreen() }
+                composable(Route.AddActivity.path) { AddActivityScreen(navController) }
                 composable(Route.Feed.path) { FeedScreen() }
                 composable(Route.Schedule.path) { ScheduleScreen() }
                 composable(Route.You.path) { YouScreen(onLogout = { isLoggedIn = false }) }
@@ -110,7 +110,8 @@ fun AlignApp() {
                         navController.navigate(item.route.path) {
                             popUpTo(Route.Feed.path) { saveState = true }
                             launchSingleTop = true
-                            restoreState = true
+                            // Force Schedule to recreate so it refetches before showing.
+                            restoreState = item.route != Route.Schedule
                         }
                     }
                 )

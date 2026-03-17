@@ -33,6 +33,16 @@ val CardWhite = Color(0xFFFFFFFF)
 // Avatars
 val AvatarGreen = Color(0xFFC2E8D0)
 
+// Schedule chips
+val ScheduleChipGreen = Color(0xFFE8F5E9)
+val ScheduleChipPurple = Color(0xFFEDE7F6)
+val ScheduleChipPink = Color(0xFFFCE4EC)
+val ScheduleChipMint = Color(0xFFE0F2F1)
+val ScheduleChipBlue = Color(0xFFE3F2FD)
+val ScheduleChipOrange = Color(0xFFFFF3E0)
+val ScheduleChipAmber = Color(0xFFFFF8E1)
+val ScheduleChipGray = Color(0xFFE8EAF6)
+
 // Input field background
 val InputBackground = Color(0xFFF8F6FF)
 
@@ -41,3 +51,6 @@ val NavBarBackground = Color(0xFFEDE7F6)
 val NavBarSelected = Color(0xFF4F46E5)
 val NavBarUnselected = Color(0xFF49454F)
 val NavBarHighlight = Color(0xFFD9D0F0)
+
+// Error
+val ErrorRed = Color(0xFFE53935)
