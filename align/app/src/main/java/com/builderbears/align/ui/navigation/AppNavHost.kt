@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,11 +26,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.navigation.compose.*
-
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.screens.feed.FeedScreen
+import com.builderbears.align.ui.screens.forgotpassword.ForgotPasswordScreen
+import com.builderbears.align.ui.screens.loading.LoadingScreen
 import com.builderbears.align.ui.screens.login.LoginScreen
 import com.builderbears.align.ui.screens.schedule.ScheduleScreen
 import com.builderbears.align.ui.screens.you.YouScreen
@@ -38,6 +39,14 @@ import com.builderbears.align.ui.theme.NavBarHighlight
 import com.builderbears.align.ui.theme.NavBarSelected
 import com.builderbears.align.ui.theme.NavBarUnselected
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
+
+private enum class AppState {
+    LOADING,
+    LOGIN,
+    FORGOT_PASSWORD,
+    MAIN
+}
 
 private data class NavItem(
     val route: Route,
@@ -54,69 +63,109 @@ private val navItems = listOf(
 
 @Composable
 fun AlignApp() {
-
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Check if logged in, if not then go to LoginScreen
-    var isLoggedIn by remember {
-        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+    var appState by remember { mutableStateOf(AppState.LOADING) }
+
+    // On startup show loading screen first
+    LaunchedEffect(Unit) {
+        delay(1200)
+        appState = if (FirebaseAuth.getInstance().currentUser != null) {
+            AppState.MAIN
+        } else {
+            AppState.LOGIN
+        }
     }
 
-    if (!isLoggedIn) {
-        LoginScreen(
-            onLoginSuccess = { isLoggedIn = true }
-        )
-        return
-    }
+    when (appState) {
 
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        // Main screen area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = Route.Feed.path
-            ) {
-                composable(Route.AddActivity.path) { AddActivityScreen(navController) }
-                composable(Route.Feed.path) { FeedScreen() }
-                composable(Route.Schedule.path) { ScheduleScreen() }
-                composable(Route.You.path) { YouScreen(onLogout = { isLoggedIn = false }) }
-            }
+        AppState.LOADING -> {
+            LoadingScreen()
         }
 
-        // Bottom navigation bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(NavBarBackground)
-                .padding(top = 12.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            navItems.forEach { item ->
-                val isSelected = currentRoute == item.route.path
-                BottomNavItem(
-                    icon = item.icon,
-                    label = item.label,
-                    isSelected = isSelected,
-                    onClick = {
-                        navController.navigate(item.route.path) {
-                            popUpTo(Route.Feed.path) { saveState = true }
-                            launchSingleTop = true
-                            // Force Schedule to recreate so it refetches before showing.
-                            restoreState = item.route != Route.Schedule
+        AppState.LOGIN -> {
+            LoginWithLoadingTransition(
+                onComplete = { appState = AppState.MAIN },
+                onForgotPassword = { appState = AppState.FORGOT_PASSWORD }
+            )
+        }
+
+        AppState.FORGOT_PASSWORD -> {
+            ForgotPasswordScreen(
+                onBack = { appState = AppState.LOGIN }
+            )
+        }
+
+        AppState.MAIN -> {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = Route.Feed.path
+                    ) {
+                        composable(Route.AddActivity.path) { AddActivityScreen(navController) }
+                        composable(Route.Feed.path) { FeedScreen() }
+                        composable(Route.Schedule.path) { ScheduleScreen() }
+                        composable(Route.You.path) {
+                            YouScreen(onLogout = { appState = AppState.LOGIN })
                         }
                     }
-                )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        .background(NavBarBackground)
+                        .padding(top = 12.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    navItems.forEach { item ->
+                        val isSelected = currentRoute == item.route.path
+                        BottomNavItem(
+                            icon = item.icon,
+                            label = item.label,
+                            isSelected = isSelected,
+                            onClick = {
+                                navController.navigate(item.route.path) {
+                                    popUpTo(Route.Feed.path) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = item.route != Route.Schedule
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun LoginWithLoadingTransition(
+    onComplete: () -> Unit,
+    onForgotPassword: () -> Unit
+) {
+    var showLoading by remember { mutableStateOf(false) }
+
+    if (showLoading) {
+        LaunchedEffect(Unit) {
+            delay(800)
+            onComplete()
+        }
+        LoadingScreen()
+    } else {
+        LoginScreen(
+            onLoginSuccess = { showLoading = true },
+            onForgotPassword = onForgotPassword
+        )
     }
 }
 
@@ -138,7 +187,6 @@ private fun BottomNavItem(
                 onClick = onClick
             )
     ) {
-        // Icon with pill highlight when selected
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -162,7 +210,6 @@ private fun BottomNavItem(
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Label
         Text(
             text = label,
             color = color,
@@ -172,7 +219,6 @@ private fun BottomNavItem(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Selection dot
         Box(
             modifier = Modifier
                 .size(6.dp)

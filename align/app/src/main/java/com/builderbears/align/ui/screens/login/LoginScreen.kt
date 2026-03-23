@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AlternateEmail
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
@@ -43,7 +44,8 @@ import com.builderbears.align.ui.theme.TextPrimary
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onForgotPassword: () -> Unit
 ) {
     DefaultGradientBackground {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -84,29 +86,44 @@ fun LoginScreen(
                         onToggle = { viewModel.onAuthModeChange(it) }
                     )
 
-                    if (viewModel.authMode == LoginMode.SIGNUP) {
+                    if (viewModel.authMode == LoginMode.LOGIN) {
+                        LoginTextField(
+                            value = viewModel.emailOrUsername,
+                            onValueChange = { viewModel.emailOrUsername = it },
+                            label = "Email or Username",
+                            placeholder = "you@example.com or username",
+                            leadingIcon = Icons.Outlined.Email
+                        )
+                    } else {
                         LoginTextField(
                             value = viewModel.displayName,
                             onValueChange = { viewModel.displayName = it },
-                            label = "DISPLAY NAME",
+                            label = "Display Name",
                             placeholder = "Your name",
                             leadingIcon = Icons.Outlined.Person
+                        )
+                        LoginTextField(
+                            value = viewModel.username,
+                            onValueChange = { viewModel.username = it },
+                            label = "Username",
+                            placeholder = "e.g. alexkim",
+                            leadingIcon = Icons.Outlined.AlternateEmail
+                        )
+                        LoginTextField(
+                            value = viewModel.email,
+                            onValueChange = { viewModel.email = it },
+                            label = "Email",
+                            placeholder = "you@example.com",
+                            leadingIcon = Icons.Outlined.Email
                         )
                     }
 
                     LoginTextField(
-                        value = viewModel.email,
-                        onValueChange = { viewModel.email = it },
-                        label = "EMAIL",
-                        placeholder = "you@example.com",
-                        leadingIcon = Icons.Outlined.Email
-                    )
-
-                    LoginTextField(
                         value = viewModel.password,
                         onValueChange = { viewModel.password = it },
-                        label = "PASSWORD",
-                        placeholder = if (viewModel.authMode == LoginMode.SIGNUP) "Min. 8 characters" else "Enter your password",
+                        label = "Password",
+                        placeholder = if (viewModel.authMode == LoginMode.SIGNUP)
+                            "Min. 8 characters" else "Enter your password",
                         leadingIcon = Icons.Outlined.Lock,
                         isPassword = true
                     )
@@ -118,11 +135,14 @@ fun LoginScreen(
                             style = LabelMedium,
                             modifier = Modifier
                                 .align(Alignment.End)
-                                .clickable { /* TODO */ }
+                                .clickable { onForgotPassword() }
                         )
                     }
 
-                    Box(modifier = Modifier.fillMaxWidth().height(20.dp)) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(20.dp)
+                    ) {
                         viewModel.errorMessage?.let {
                             Text(it, color = Color.Red, style = LabelMedium)
                         }
@@ -137,15 +157,22 @@ fun LoginScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !viewModel.isLoading,
-                        shape = RoundedCornerShape(50.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Indigo)
                     ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        else Text(
-                            text = if (viewModel.authMode == LoginMode.LOGIN) "Log in" else "Create Account",
-                            style = LabelMedium,
-                            color = Color.White
-                        )
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White
+                            )
+                        } else {
+                            Text(
+                                text = if (viewModel.authMode == LoginMode.LOGIN)
+                                    "Log in" else "Create Account",
+                                style = LabelMedium,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
