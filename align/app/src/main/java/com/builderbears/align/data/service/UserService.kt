@@ -9,14 +9,37 @@ class UserService {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
+    private val usernamesCollection = db.collection("usernames")
 
-    suspend fun createUser(name: String, email: String, password: String): Result<Unit> {
+    suspend fun createUser(
+        name: String,
+        email: String,
+        password: String,
+        username: String
+    ): Result<Unit> {
         return try {
-            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
-            val userId = authResult.user?.uid ?: return Result.failure(Exception("No user ID returned"))
+            val lowercaseUsername = username.lowercase()
 
-            val user = User(userId = userId, name = name, email = email)
-            usersCollection.document(userId).set(user).await()
+            // Check username is not already taken
+            val usernameDoc = usernamesCollection.document(lowercaseUsername).get().await()
+            if (usernameDoc.exists()) {
+                return Result.failure(Exception("Username already taken."))
+            }
+
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
+            val userId = authResult.user?.uid
+                ?: return Result.failure(Exception("No user ID returned"))
+
+            val batch = db.batch()
+            batch.set(
+                usersCollection.document(userId),
+                User(userId = userId, name = name, email = email, username = lowercaseUsername)
+            )
+            batch.set(
+                usernamesCollection.document(lowercaseUsername),
+                mapOf("email" to email, "userId" to userId)
+            )
+            batch.commit().await()
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -24,11 +47,48 @@ class UserService {
         }
     }
 
-    suspend fun loginUser(email: String, password: String): Result<String> {
+    suspend fun loginUser(emailOrUsername: String, password: String): Result<String> {
         return try {
+            val email = if (emailOrUsername.contains("@") && emailOrUsername.contains(".")) {
+                emailOrUsername
+            } else {
+                val doc = usernamesCollection
+                    .document(emailOrUsername.lowercase())
+                    .get().await()
+                if (!doc.exists()) {
+                    return Result.failure(Exception("No account found with that username."))
+                }
+                doc.getString("email")
+                    ?: return Result.failure(Exception("Could not resolve username."))
+            }
+
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
-            val userId = authResult.user?.uid ?: return Result.failure(Exception("No user ID returned"))
+            val userId = authResult.user?.uid
+                ?: return Result.failure(Exception("No user ID returned"))
             Result.success(userId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun migrateUsernameIfMissing(userId: String): Result<Unit> {
+        return try {
+            val snapshot = usersCollection.document(userId).get().await()
+            val user = snapshot.toObject(User::class.java) ?: return Result.success(Unit)
+            if (user.username.isBlank()) {
+                val defaultUsername = user.email.substringBefore("@").lowercase()
+                val batch = db.batch()
+                batch.update(
+                    usersCollection.document(userId),
+                    "username", defaultUsername
+                )
+                batch.set(
+                    usernamesCollection.document(defaultUsername),
+                    mapOf("email" to user.email, "userId" to userId)
+                )
+                batch.commit().await()
+            }
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -54,7 +114,6 @@ class UserService {
 
     suspend fun getUsersByIds(userIds: List<String>): Result<List<User>> {
         if (userIds.isEmpty()) return Result.success(emptyList())
-
         return try {
             val users = mutableListOf<User>()
             userIds.distinct().chunked(10).forEach { chunk ->
@@ -79,6 +138,15 @@ class UserService {
     suspend fun deleteUser(userId: String): Result<Unit> {
         return try {
             usersCollection.document(userId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendPasswordReset(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

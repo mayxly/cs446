@@ -12,18 +12,26 @@ import kotlinx.coroutines.launch
 class LoginViewModel : ViewModel() {
     private val userService = UserService()
 
-    var email by mutableStateOf("")
-    var password by mutableStateOf("")
-    var displayName by mutableStateOf("")
-    var authMode by mutableStateOf(LoginMode.LOGIN)
+    // Login fields
+    var emailOrUsername by mutableStateOf("")
 
+    // Signup fields
+    var email by mutableStateOf("")
+    var username by mutableStateOf("")
+    var displayName by mutableStateOf("")
+
+    // Shared
+    var password by mutableStateOf("")
+    var authMode by mutableStateOf(LoginMode.LOGIN)
     var errorMessage by mutableStateOf<String?>(null)
     var isLoading by mutableStateOf(false)
 
     private fun clearFields() {
+        emailOrUsername = ""
         email = ""
         password = ""
         displayName = ""
+        username = ""
         errorMessage = null
     }
 
@@ -33,24 +41,27 @@ class LoginViewModel : ViewModel() {
     }
 
     fun onLogin(onSuccess: () -> Unit) {
-        if (email.isBlank() || password.isBlank()) {
+        if (emailOrUsername.isBlank() || password.isBlank()) {
             errorMessage = "Please fill in all fields."
             return
         }
         viewModelScope.launch {
             isLoading = true
-            userService.loginUser(email, password)
-                .onSuccess {
+            userService.loginUser(emailOrUsername, password)
+                .onSuccess { userId ->
+                    userService.migrateUsernameIfMissing(userId)
                     clearFields()
                     onSuccess()
                 }
-                .onFailure { errorMessage = "Incorrect email or password. Please try again." }
+                .onFailure {
+                    errorMessage = "Incorrect email/username or password. Please try again."
+                }
             isLoading = false
         }
     }
 
     fun onSignUp(onSuccess: () -> Unit) {
-        if (displayName.isBlank() || email.isBlank() || password.isBlank()) {
+        if (displayName.isBlank() || username.isBlank() || email.isBlank() || password.isBlank()) {
             errorMessage = "Please fill in all fields."
             return
         }
@@ -58,9 +69,13 @@ class LoginViewModel : ViewModel() {
             errorMessage = "Password must have minimum 8 characters."
             return
         }
+        if (username.contains(" ")) {
+            errorMessage = "Username cannot contain spaces."
+            return
+        }
         viewModelScope.launch {
             isLoading = true
-            userService.createUser(displayName, email, password)
+            userService.createUser(displayName, email, password, username)
                 .onSuccess {
                     clearFields()
                     onSuccess()
@@ -69,6 +84,8 @@ class LoginViewModel : ViewModel() {
                     errorMessage = when {
                         e.message?.contains("email address is already in use") == true ->
                             "An account with this email already exists."
+                        e.message?.contains("Username already taken") == true ->
+                            "That username is already taken."
                         else -> e.message
                     }
                 }
