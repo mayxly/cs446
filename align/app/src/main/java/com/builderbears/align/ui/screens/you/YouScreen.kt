@@ -73,6 +73,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.data.service.NotificationService
 import com.builderbears.align.ui.theme.AvatarGreen
+import com.builderbears.align.ui.theme.AvatarGreen2
+import com.builderbears.align.ui.theme.AvatarOrange
+import com.builderbears.align.ui.theme.AvatarPink
+import com.builderbears.align.ui.theme.AvatarYellow
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
@@ -96,14 +100,14 @@ private data class YouFriend(
 )
 
 private val placeholderFriends = listOf(
-    YouFriend("Alex Kim", "A", Color(0xFF4CAF50), 32, "\uD83E\uDD47", "1st"),
-    YouFriend("Sam Reyes", "S", Color(0xFFE91E63), 27, "\uD83E\uDD48", "2nd"),
-    YouFriend("Maya Chen", "M", Color(0xFFFF8A65), 23, "\uD83E\uDD49", "3rd"),
-    YouFriend("Jordan Park", "J", Color(0xFFD4C878), 13),
-    YouFriend("Tiffany Cho", "T", Color(0xFFB39DDB), 5),
-    YouFriend("May Ly", "J", Color(0xFFFFCC80), 4),
-    YouFriend("Paul Parker", "P", Color(0xFFEF9A9A), 4),
-    YouFriend("Jennie Park", "J", Color(0xFFA5D6A7), 0)
+    YouFriend("Alex Kim", "A", AvatarGreen, 32, "\uD83E\uDD47", "1st"),
+    YouFriend("Sam Reyes", "S", AvatarPink, 27, "\uD83E\uDD48", "2nd"),
+    YouFriend("Maya Chen", "M", AvatarOrange, 23, "\uD83E\uDD49", "3rd"),
+    YouFriend("Jordan Park", "J", AvatarYellow, 13),
+    YouFriend("Tiffany Cho", "T", PrimaryBlue, 5),
+    YouFriend("May Ly", "J", AvatarOrange, 4),
+    YouFriend("Paul Parker", "P", AvatarPink, 4),
+    YouFriend("Jennie Park", "J", AvatarGreen2, 0)
 )
 
 private val weeklyMinutes = listOf(45, 30, 60, 50, 40, 55, 20)
@@ -657,7 +661,7 @@ private fun StatsRow() {
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFE91E63)),
+                            .background(AvatarPink),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

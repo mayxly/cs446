@@ -295,11 +295,11 @@ private fun ActivityCard(
                         .size(40.dp)
                         .border(2.dp, Color(0xFFD8D8D8), CircleShape)
                         .clip(CircleShape)
-                        .background(getColorForUserId(activity.userId)),
+                        .background(getColorForUserId(activity.primaryParticipantId())),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = activity.userName.take(1).uppercase(),
+                        text = activity.primaryParticipantName().take(1).uppercase(),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -309,7 +309,7 @@ private fun ActivityCard(
                 // User name and date/time
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = activity.userName,
+                        text = activity.primaryParticipantName(),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary,
@@ -354,10 +354,9 @@ private fun ActivityCard(
             Spacer(Modifier.height(4.dp))
 
             // Members
-            if (activity.invited.isNotEmpty()) {
+            if (activity.participants.isNotEmpty()) {
                 ActivityMembers(
-                    invited = activity.invited.orEmpty(),
-                    invitedNames = activity.invitedNames.orEmpty(),
+                    participants = activity.participants,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -406,11 +405,10 @@ private fun ActivityCard(
 
 @Composable
 private fun ActivityMembers(
-    invited: List<String>,
-    invitedNames: List<String>,
+    participants: List<com.builderbears.align.data.model.ActivityParticipant>,
     modifier: Modifier = Modifier
 ) {
-    if (invited.isEmpty()) return
+    if (participants.isEmpty()) return
 
     Row(
         modifier = modifier,
@@ -420,17 +418,17 @@ private fun ActivityMembers(
         // Member pfps
         Box(modifier = Modifier.height(20.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                invited.forEachIndexed { index, userId ->
+                participants.forEach { participant ->
                     Box(
                         modifier = Modifier
                             .size(20.dp)
                             .border(1.dp, Color(0xFFD8D8D8), CircleShape)
                             .clip(CircleShape)
-                            .background(color = getColorForUserId(userId)),
+                            .background(color = getColorForUserId(participant.userId)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = (invitedNames.getOrNull(index) ?: userId).take(1).uppercase(),
+                            text = participant.name.take(1).uppercase(),
                             fontSize = 7.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White
@@ -448,12 +446,12 @@ private fun ActivityMembers(
         )
 
         // Names list
-        val displayNames = invited.take(2).mapIndexed { index, _ ->
-            invitedNames.getOrNull(index) ?: ""
-        }.joinToString(", ")
+        val displayNames = participants.take(2)
+            .map { it.name }
+            .joinToString(", ")
 
         Text(
-            text = if (invited.size > 2) "$displayNames, +${invited.size - 2} more" else displayNames,
+            text = if (participants.size > 2) "$displayNames, +${participants.size - 2} more" else displayNames,
             fontSize = 11.sp,
             color = TextPrimary,
             fontWeight = FontWeight.Medium,
@@ -462,6 +460,14 @@ private fun ActivityMembers(
             modifier = Modifier.weight(1f)
         )
     }
+}
+
+private fun Activity.primaryParticipantName(): String {
+    return participants.firstOrNull()?.name ?: "Workout"
+}
+
+private fun Activity.primaryParticipantId(): String {
+    return participants.firstOrNull()?.userId ?: ""
 }
 
 @Composable

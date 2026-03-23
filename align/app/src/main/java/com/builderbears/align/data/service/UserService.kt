@@ -43,6 +43,30 @@ class UserService {
         }
     }
 
+    suspend fun getAllUsers(): Result<List<User>> {
+        return try {
+            val snapshot = usersCollection.get().await()
+            Result.success(snapshot.toObjects(User::class.java))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getUsersByIds(userIds: List<String>): Result<List<User>> {
+        if (userIds.isEmpty()) return Result.success(emptyList())
+
+        return try {
+            val users = mutableListOf<User>()
+            userIds.distinct().chunked(10).forEach { chunk ->
+                val snapshot = usersCollection.whereIn("userId", chunk).get().await()
+                users += snapshot.toObjects(User::class.java)
+            }
+            Result.success(users)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateUser(userId: String, updates: Map<String, Any>): Result<Unit> {
         return try {
             usersCollection.document(userId).update(updates).await()

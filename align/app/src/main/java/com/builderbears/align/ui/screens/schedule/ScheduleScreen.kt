@@ -57,6 +57,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.NotificationCountBadge
+import com.builderbears.align.data.model.Attendee
+import com.builderbears.align.data.model.MonthGroup
+import com.builderbears.align.data.model.ScheduledDay
+import com.builderbears.align.data.model.WorkoutEvent
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
