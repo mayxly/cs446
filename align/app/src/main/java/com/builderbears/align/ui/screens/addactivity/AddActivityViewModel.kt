@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.data.model.ActivityParticipant
+import com.builderbears.align.data.model.User
 import com.builderbears.align.data.service.ActivityService
 import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
@@ -24,12 +26,40 @@ class AddActivityViewModel : ViewModel() {
     var isSaving by mutableStateOf(false)
     var saveError by mutableStateOf<String?>(null)
     var saveSuccess by mutableStateOf(false)
+    var isLoadingUsers by mutableStateOf(false)
+        private set
+    var availableUsers by mutableStateOf<List<User>>(emptyList())
+        private set
+    var usersLoadError by mutableStateOf<String?>(null)
+        private set
 
     // Validation error states
     var nameError by mutableStateOf<String?>(null)
     var dateError by mutableStateOf<String?>(null)
     var timeError by mutableStateOf<String?>(null)
     var locationError by mutableStateOf<String?>(null)
+
+    init {
+        loadUsers()
+    }
+
+    fun loadUsers() {
+        viewModelScope.launch {
+            isLoadingUsers = true
+            usersLoadError = null
+            userService.getAllUsers()
+                .onSuccess { users ->
+                    availableUsers = users
+                        .filter { it.userId.isNotBlank() }
+                        .sortedBy { it.name.lowercase() }
+                }
+                .onFailure {
+                    availableUsers = emptyList()
+                    usersLoadError = it.message ?: "Failed to load users"
+                }
+            isLoadingUsers = false
+        }
+    }
 
     fun validateFields(
         name: String,
@@ -85,8 +115,7 @@ class AddActivityViewModel : ViewModel() {
         location: String,
         date: String,
         time: String,
-        invitedIds: List<String> = emptyList(),
-        invitedNames: List<String> = emptyList(),
+        invitedUserIds: List<String> = emptyList(),
         imageUrl: String? = null
     ) {
         if (currentUserId.isEmpty()) {
@@ -98,25 +127,35 @@ class AddActivityViewModel : ViewModel() {
             isSaving = true
             saveError = null
 
-            // Add activity creator to metadata
-            val userResult = userService.getUser(currentUserId)
-            val userName = userResult.getOrNull()?.name ?: "Unknown User"
+            val selectedInvitees = availableUsers
+                .filter { it.userId in invitedUserIds }
+                .map { ActivityParticipant(userId = it.userId, name = it.name) }
+
+            val currentUser = availableUsers.firstOrNull { it.userId == currentUserId }
+                ?: userService.getUser(currentUserId).getOrNull()
+
+            val currentParticipant = ActivityParticipant(
+                userId = currentUserId,
+                name = currentUser?.name ?: "You"
+            )
+
+            val participants = (selectedInvitees + currentParticipant)
+                .distinctBy { it.userId }
+            val participantIds = participants.map { it.userId }
 
             val activity = Activity(
-                userId = currentUserId,
-                userName = userName,
                 name = name,
                 description = description,
                 workoutType = workoutType,
                 location = location,
                 date = date,
                 time = time,
-                invited = invitedIds,
-                invitedNames = invitedNames,
+                participantIds = participantIds,
+                participants = participants,
                 imageUrl = imageUrl
             )
 
-            activityService.createActivity(currentUserId, activity)
+            activityService.createActivity(activity)
                 .onSuccess { saveSuccess = true }
                 .onFailure { saveError = it.message }
 

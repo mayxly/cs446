@@ -35,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.builderbears.align.data.model.User
 import com.builderbears.align.ui.navigation.Route
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -72,25 +74,18 @@ import com.builderbears.align.ui.theme.LightBlue
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
+import com.builderbears.align.ui.utils.userColorForId
+import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 
-data class Friend(val id: Int, val name: String, val handle: String, val initials: String, val color: Color)
+data class Friend(val id: String, val name: String, val handle: String, val initials: String, val color: Color)
 
 private val workoutTypes = listOf(
     "Run" to "🏃", "Gym" to "🏋️", "Yoga" to "🧘", "Cycle" to "🚴",
     "Swim" to "🏊", "Basketball" to "🏀", "HIIT" to "🔥", "Other" to "✨"
-)
-
-// TODO: Link this to actual data
-// Hardcoded for now
-private val friends = listOf(
-    Friend(1, "Alex Kim",    "@alexkim",  "A", Color(0xFF4CAF50)),
-    Friend(2, "Sam Reyes",   "@samreyes", "S", Color(0xFFE91E63)),
-    Friend(3, "Jorden Park", "@jorrp",    "J", Color(0xFFFFD700)),
-    Friend(4, "Maya Chen",   "@mayac",    "M", Color(0xFFFF8A65))
 )
 
 @Composable
@@ -105,11 +100,18 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     var location       by remember { mutableStateOf("") }
     var workoutType    by remember { mutableStateOf("Run") }
     var description    by remember { mutableStateOf("") }
-    var invitedFriends by remember { mutableStateOf(setOf<Int>() ) }
+    var invitedFriends by remember { mutableStateOf(setOf<String>() ) }
     var imageUrl       by remember { mutableStateOf<android.net.Uri?>(null) }
 
     var showCalendar   by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    val friends = remember(viewModel.availableUsers, currentUserId) {
+        viewModel.availableUsers
+            .filter { it.userId != currentUserId }
+            .map { it.toFriend() }
+    }
 
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -128,7 +130,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             location = ""
             workoutType = "Run"
             description = ""
-            invitedFriends = setOf<Int>()
+            invitedFriends = setOf<String>()
             imageUrl = null
             viewModel.saveSuccess = false
             navController.navigate(Route.Schedule.path) {
@@ -148,6 +150,10 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadUsers()
     }
 
     val scrollState = rememberScrollState()
@@ -414,16 +420,62 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            friends.forEach { friend ->
-                val isSelected = invitedFriends.contains(friend.id)
-                FriendRow(
-                    friend = friend,
-                    isSelected = isSelected,
-                    onClick = {
-                        invitedFriends = if (isSelected) invitedFriends - friend.id
-                        else invitedFriends + friend.id
+            when {
+                viewModel.isLoadingUsers -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PrimaryBlue
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Loading friends...", color = TextSecondary, fontSize = 13.sp)
                     }
-                )
+                }
+
+                viewModel.usersLoadError != null -> {
+                    Text(
+                        text = viewModel.usersLoadError ?: "Failed to load friends",
+                        fontSize = 12.sp,
+                        color = ErrorRed,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Button(
+                        onClick = { viewModel.loadUsers() },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    ) {
+                        Text("Retry", fontSize = 13.sp)
+                    }
+                }
+
+                friends.isEmpty() -> {
+                    Text(
+                        text = "No friends found. Ask others to create accounts first.",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                else -> {
+                    friends.forEach { friend ->
+                        val isSelected = invitedFriends.contains(friend.id)
+                        FriendRow(
+                            friend = friend,
+                            isSelected = isSelected,
+                            onClick = {
+                                invitedFriends = if (isSelected) invitedFriends - friend.id
+                                else invitedFriends + friend.id
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -446,8 +498,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                         location = location,
                         date = selectedDate?.toString() ?: "",
                         time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
-                        invitedIds = invitedFriends.map { it.toString() },
-                        invitedNames = friends.filter { it.id in invitedFriends }.map { it.name },
+                        invitedUserIds = invitedFriends.toList(),
                         imageUrl = imageUrl.toString()
                     )
                 }
@@ -464,6 +515,27 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
 
         Spacer(Modifier.height(100.dp))
     }
+}
+
+private fun User.toFriend(): Friend {
+    val normalizedName = name.ifBlank { email.ifBlank { "User" } }
+    val initials = normalizedName
+        .trim()
+        .split(" ")
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString("") { it.first().uppercase() }
+        .ifBlank { "U" }
+
+    val handle = if (email.isNotBlank()) email else "@${normalizedName.lowercase().replace(" ", "")}" 
+
+    return Friend(
+        id = userId,
+        name = normalizedName,
+        handle = handle,
+        initials = initials,
+        color = userColorForId(userId)
+    )
 }
 
 @Composable

@@ -43,7 +43,7 @@ class FeedViewModel : ViewModel() {
                     sortedActivities.forEach { activity ->
                         Log.d(TAG, "Activity: name=${activity.name}, type=${activity.workoutType}, " +
                             "location=${activity.location}, date=${activity.date}, time=${activity.time}, " +
-                            "invited=${activity.invited.size}, reactions=${activity.reactions.size}")
+                            "participants=${activity.participants.size}, reactions=${activity.reactions.size}")
                     }
                 }
                 result.onFailure { exception ->
@@ -77,7 +77,7 @@ class FeedViewModel : ViewModel() {
                     val updatedActivity = activity.copy(reactions = reactions)
                     currentActivities[index] = updatedActivity
                     _activities.value = currentActivities.sortedByDescending { it.date }
-                    activityService.updateActivity(userId, activityId, mapOf("reactions" to reactions))
+                    activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
                 }
             }
         }
@@ -101,7 +101,7 @@ class FeedViewModel : ViewModel() {
                 val updatedActivity = activity.copy(reactions = reactions)
                 currentActivities[index] = updatedActivity
                 _activities.value = currentActivities.sortedByDescending { it.date }
-                activityService.updateActivity(userId, activityId, mapOf("reactions" to reactions))
+                activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
             }
         }
     }

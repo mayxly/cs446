@@ -7,6 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.model.Attendee
+import com.builderbears.align.data.model.MonthGroup
+import com.builderbears.align.data.model.ScheduledDay
+import com.builderbears.align.data.model.ScheduleUiState
+import com.builderbears.align.data.model.WorkoutEvent
 import com.builderbears.align.ui.theme.ScheduleChipAmber
 import com.builderbears.align.ui.theme.ScheduleChipBlue
 import com.builderbears.align.ui.theme.ScheduleChipGray
@@ -15,6 +20,7 @@ import com.builderbears.align.ui.theme.ScheduleChipMint
 import com.builderbears.align.ui.theme.ScheduleChipOrange
 import com.builderbears.align.ui.theme.ScheduleChipPink
 import com.builderbears.align.ui.theme.ScheduleChipPurple
+import com.builderbears.align.ui.utils.userColorForId
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -74,6 +80,19 @@ class ScheduleViewModel : ViewModel() {
 
 			val typeMeta = workoutTypeMeta(activity.workoutType)
 
+			val attendees = activity.participants.map { participant ->
+				Attendee(
+					initials = participant.name
+						.split(" ")
+						.filter { it.isNotBlank() }
+						.take(2)
+						.joinToString("") { it.first().uppercase() }
+						.ifBlank { "U" },
+					name = participant.name,
+					color = userColorForId(participant.userId)
+				)
+			}
+
 			val event = WorkoutEvent(
 				id = activity.activityId.ifBlank { "${activity.name}-${date}" },
 				title = activity.name.ifBlank { "Untitled workout" },
@@ -82,7 +101,7 @@ class ScheduleViewModel : ViewModel() {
 				type = typeMeta.label,
 				typeEmoji = typeMeta.emoji,
 				typeColor = typeMeta.color,
-				attendees = emptyList()
+				attendees = attendees
 			)
 
 			ScheduledDay(

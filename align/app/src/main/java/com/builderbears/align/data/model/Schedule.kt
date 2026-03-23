@@ -1,4 +1,4 @@
-package com.builderbears.align.ui.screens.schedule
+package com.builderbears.align.data.model
 
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate

@@ -2,6 +2,7 @@ package com.builderbears.align.ui.screens.feed
 
 import androidx.compose.ui.graphics.Color
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.ui.utils.userColorForId
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -21,13 +22,7 @@ fun Activity.getWorkoutEmoji(): String {
 }
 
 fun getColorForUserId(userId: String): Color {
-    val colors = listOf(
-        Color(0xFF4CAF50),
-        Color(0xFFE91E63),
-        Color(0xFFFFD700),
-        Color(0xFFFF8A65),
-    )
-    return colors[kotlin.math.abs(userId.hashCode()) % colors.size]
+    return userColorForId(userId)
 }
 
 fun formatActivityDate(dateString: String): String {
