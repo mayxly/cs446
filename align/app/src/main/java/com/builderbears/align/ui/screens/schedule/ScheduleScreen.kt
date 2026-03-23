@@ -349,57 +349,63 @@ private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(10.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                event.attendees.forEach { attendee ->
-                    AttendeeChip(attendee)
-                    Spacer(Modifier.width(6.dp))
-                }
-                if (event.extraCount > 0) {
-                    Text(
-                        text = "+ ${event.extraCount}",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            if (event.attendees.isNotEmpty()) {
+                EventAttendeesSummary(
+                    attendees = event.attendees,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AttendeeChip(attendee: Attendee) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = attendee.color.copy(alpha = 0.25f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, attendee.color.copy(alpha = 0.4f))
+private fun EventAttendeesSummary(attendees: List<Attendee>, modifier: Modifier = Modifier) {
+    if (attendees.isEmpty()) return
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(attendee.color),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = attendee.initials,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+        Box(modifier = Modifier.height(20.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                attendees.forEach { attendee ->
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(attendee.color),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = attendee.initials,
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = attendee.name,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary
-            )
         }
+
+        Text(
+            text = "with",
+            fontSize = 11.sp,
+            color = TextSecondary,
+            fontWeight = FontWeight.Normal
+        )
+
+        val displayNames = attendees.take(2).joinToString(", ") { it.name }
+        Text(
+            text = if (attendees.size > 2) "$displayNames, +${attendees.size - 2} more" else displayNames,
+            fontSize = 11.sp,
+            color = TextPrimary,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

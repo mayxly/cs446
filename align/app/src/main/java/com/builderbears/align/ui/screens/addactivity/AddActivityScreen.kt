@@ -1,14 +1,13 @@
 package com.builderbears.align.ui.screens.addactivity
 
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,6 +57,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -101,23 +106,16 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     var workoutType    by remember { mutableStateOf("Run") }
     var description    by remember { mutableStateOf("") }
     var invitedFriends by remember { mutableStateOf(setOf<String>() ) }
-    var imageUrl       by remember { mutableStateOf<android.net.Uri?>(null) }
 
     var showCalendar   by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var friendSearchQuery by remember { mutableStateOf("") }
 
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     val friends = remember(viewModel.availableUsers, currentUserId) {
         viewModel.availableUsers
             .filter { it.userId != currentUserId }
             .map { it.toFriend() }
-    }
-
-    // Image picker launcher
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
-        imageUrl = uri
     }
 
     LaunchedEffect(viewModel.saveSuccess) {
@@ -131,7 +129,6 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             workoutType = "Run"
             description = ""
             invitedFriends = setOf<String>()
-            imageUrl = null
             viewModel.saveSuccess = false
             navController.navigate(Route.Schedule.path) {
                 // Reset to root feed before showing schedule to keep backstack clean.
@@ -157,6 +154,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     }
 
     val scrollState = rememberScrollState()
+    var isFriendListInteracting by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -199,7 +197,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                     size = size
                 )
             }
-            .verticalScroll(scrollState)
+                .verticalScroll(scrollState, enabled = !isFriendListInteracting)
     ) {
         Text(
             text = "Add Activity",
@@ -395,31 +393,55 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
 
         Spacer(Modifier.height(20.dp))
 
-        SectionLabel("IMAGE")
-        InputCard(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clickable { imagePickerLauncher.launch("image/*") }
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = if (imageUrl != null) "📸 Image selected" else "📸 Add image",
-                    color = if (imageUrl != null) TextPrimary else TextSecondary,
-                    fontSize = 15.sp
-                )
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
         SectionLabel("INVITE FRIENDS")
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = CardWhite),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = "Search",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    TextField(
+                        value = friendSearchQuery,
+                        onValueChange = { friendSearchQuery = it },
+                        placeholder = { Text("Search for friends", color = TextSecondary, fontSize = 14.sp) },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor   = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor   = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            val filteredFriends = remember(friends, friendSearchQuery) {
+                if (friendSearchQuery.isBlank()) friends
+                else friends.filter { friend ->
+                    friend.name.contains(friendSearchQuery, ignoreCase = true) ||
+                    friend.handle.contains(friendSearchQuery, ignoreCase = true)
+                }
+            }
+            val maxVisibleFriends = 4
+            val friendRowHeight = 68.dp
+            val friendRowSpacing = 8.dp
+            val maxFriendsListHeight = (friendRowHeight * maxVisibleFriends) + (friendRowSpacing * (maxVisibleFriends - 1))
+
             when {
                 viewModel.isLoadingUsers -> {
                     Row(
@@ -464,16 +486,97 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                 }
 
                 else -> {
-                    friends.forEach { friend ->
-                        val isSelected = invitedFriends.contains(friend.id)
-                        FriendRow(
-                            friend = friend,
-                            isSelected = isSelected,
-                            onClick = {
-                                invitedFriends = if (isSelected) invitedFriends - friend.id
-                                else invitedFriends + friend.id
-                            }
+                    if (filteredFriends.isEmpty()) {
+                        Text(
+                            text = "No friends match \"$friendSearchQuery\".",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
+                    } else {
+                        if (filteredFriends.size <= maxVisibleFriends) {
+                            Column(verticalArrangement = Arrangement.spacedBy(friendRowSpacing)) {
+                                filteredFriends.forEach { friend ->
+                                    val isSelected = invitedFriends.contains(friend.id)
+                                    FriendRow(
+                                        friend = friend,
+                                        isSelected = isSelected,
+                                        onClick = {
+                                            invitedFriends = if (isSelected) invitedFriends - friend.id
+                                            else invitedFriends + friend.id
+                                        }
+                                    )
+                                }
+                            }
+                        } else {
+                            val friendListState = rememberLazyListState()
+                            val density = LocalDensity.current
+                            val itemHeightPx = with(density) { (friendRowHeight + friendRowSpacing).toPx() }
+                            val viewportHeightPx = with(density) { maxFriendsListHeight.toPx() }
+                            val totalContentHeightPx = (itemHeightPx * filteredFriends.size) - with(density) { friendRowSpacing.toPx() }
+                            val maxScrollPx = (totalContentHeightPx - viewportHeightPx).coerceAtLeast(1f)
+                            val estimatedScrollPx = (friendListState.firstVisibleItemIndex * itemHeightPx) + friendListState.firstVisibleItemScrollOffset
+                            val scrollProgress = (estimatedScrollPx / maxScrollPx).coerceIn(0f, 1f)
+                            val thumbHeightPx = ((viewportHeightPx / totalContentHeightPx) * viewportHeightPx)
+                                .coerceIn(with(density) { 28.dp.toPx() }, viewportHeightPx)
+                            val thumbOffsetPx = (scrollProgress * (viewportHeightPx - thumbHeightPx)).coerceIn(0f, viewportHeightPx - thumbHeightPx)
+                            val thumbHeightDp = with(density) { thumbHeightPx.toDp() }
+                            val thumbOffsetDp = with(density) { thumbOffsetPx.toDp() }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(maxFriendsListHeight)
+                            ) {
+                                LazyColumn(
+                                    state = friendListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(end = 10.dp)
+                                        .pointerInput(filteredFriends.size) {
+                                            detectVerticalDragGestures(
+                                                onDragStart = { isFriendListInteracting = true },
+                                                onVerticalDrag = { _, _ -> },
+                                                onDragEnd = { isFriendListInteracting = false },
+                                                onDragCancel = { isFriendListInteracting = false }
+                                            )
+                                        },
+                                    verticalArrangement = Arrangement.spacedBy(friendRowSpacing)
+                                ) {
+                                    items(filteredFriends, key = { it.id }) { friend ->
+                                        val isSelected = invitedFriends.contains(friend.id)
+                                        FriendRow(
+                                            friend = friend,
+                                            isSelected = isSelected,
+                                            onClick = {
+                                                invitedFriends = if (isSelected) invitedFriends - friend.id
+                                                else invitedFriends + friend.id
+                                            }
+                                        )
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .padding(end = 2.dp)
+                                        .width(4.dp)
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .background(PrimaryBlue.copy(alpha = 0.12f))
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(end = 2.dp, top = thumbOffsetDp)
+                                        .width(4.dp)
+                                        .height(thumbHeightDp)
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .background(PrimaryBlue.copy(alpha = 0.9f))
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -498,8 +601,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                         location = location,
                         date = selectedDate?.toString() ?: "",
                         time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
-                        invitedUserIds = invitedFriends.toList(),
-                        imageUrl = imageUrl.toString()
+                        invitedUserIds = invitedFriends.toList()
                     )
                 }
             },
@@ -610,6 +712,7 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(68.dp)
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
                 color = if (isSelected) PrimaryBlue else Color.Transparent,
