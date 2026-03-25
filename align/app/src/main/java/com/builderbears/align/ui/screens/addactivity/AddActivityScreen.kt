@@ -16,14 +16,17 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,6 +86,7 @@ import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
 import com.builderbears.align.ui.utils.userColorForId
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -103,6 +109,19 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     var selectedMinute by remember { mutableStateOf(10) }
     var isPm           by remember { mutableStateOf(true) }
     var location       by remember { mutableStateOf("") }
+    var selectedLocationPlaceId by remember { mutableStateOf("") }
+    var selectedLocationLat by remember { mutableStateOf<Double?>(null) }
+    var selectedLocationLng by remember { mutableStateOf<Double?>(null) }
+    var lastResolvedPlaceId by remember { mutableStateOf("") }
+    var lastResolvedLocation by remember { mutableStateOf("") }
+    var lastResolvedDisplayName by remember { mutableStateOf("") }
+    var lastResolvedDisplayAddress by remember { mutableStateOf("") }
+    var lastResolvedLat by remember { mutableStateOf<Double?>(null) }
+    var lastResolvedLng by remember { mutableStateOf<Double?>(null) }
+    var selectedLocationDisplayName by remember { mutableStateOf("") }
+    var selectedLocationDisplayAddress by remember { mutableStateOf("") }
+    var selectedLocationLabel by remember { mutableStateOf("") }
+    var selectedLocationFullText by remember { mutableStateOf("") }
     var workoutType    by remember { mutableStateOf("Run") }
     var description    by remember { mutableStateOf("") }
     var invitedFriends by remember { mutableStateOf(setOf<String>() ) }
@@ -117,6 +136,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             .filter { it.userId != currentUserId }
             .map { it.toFriend() }
     }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(viewModel.saveSuccess) {
         if (viewModel.saveSuccess) {
@@ -126,6 +146,20 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             selectedMinute = 10
             isPm = true
             location = ""
+            selectedLocationPlaceId = ""
+            selectedLocationLat = null
+            selectedLocationLng = null
+            lastResolvedPlaceId = ""
+            lastResolvedLocation = ""
+            lastResolvedDisplayName = ""
+            lastResolvedDisplayAddress = ""
+            lastResolvedLat = null
+            lastResolvedLng = null
+            selectedLocationDisplayName = ""
+            selectedLocationDisplayAddress = ""
+            selectedLocationLabel = ""
+            selectedLocationFullText = ""
+            viewModel.resetLocationSearchSession()
             workoutType = "Run"
             description = ""
             invitedFriends = setOf<String>()
@@ -325,14 +359,43 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
         Spacer(Modifier.height(20.dp))
 
         SectionLabel("LOCATION")
+        val locationSuggestions = viewModel.locationSuggestions
+
         InputCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null,
                     tint = TextSecondary, modifier = Modifier.padding(end = 8.dp))
                 TextField(
                     value = location,
-                    onValueChange = { location = it },
-                    placeholder = { Text("e.g. Riverside Park", color = TextSecondary) },
+                    onValueChange = { updated ->
+                        location = updated
+                        if (updated != selectedLocationLabel) {
+                            selectedLocationPlaceId = ""
+                            selectedLocationLat = null
+                            selectedLocationLng = null
+                            selectedLocationDisplayName = ""
+                            selectedLocationDisplayAddress = ""
+                            selectedLocationLabel = ""
+                            selectedLocationFullText = ""
+                            viewModel.resetLocationSearchSession(clearSuggestions = false)
+                        }
+                        if (updated.isBlank()) {
+                            viewModel.resetLocationSearchSession()
+                        } else {
+                            viewModel.onLocationInputChanged(
+                                context = context,
+                                query = updated,
+                                selectedLocationLabel = selectedLocationLabel,
+                                selectedLocationPlaceId = selectedLocationPlaceId
+                            )
+                        }
+                    },
+                    placeholder = { Text("Enter a location", color = TextSecondary) },
+                    singleLine = true,
+                    maxLines = 1,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor   = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -341,6 +404,78 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+        if (viewModel.locationConfigError != null) {
+            Text(
+                text = viewModel.locationConfigError ?: "Missing MAPS_API_KEY configuration",
+                fontSize = 12.sp,
+                color = ErrorRed,
+                modifier = Modifier.padding(start = 20.dp, top = 4.dp, end = 16.dp)
+            )
+        }
+        if (locationSuggestions.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = CardWhite),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                ThresholdScrollableList(
+                    items = locationSuggestions,
+                    maxVisibleItems = 4,
+                    rowHeight = 58.dp,
+                    rowSpacing = 0.dp,
+                    keySelector = { it.placeId },
+                    modifier = Modifier.fillMaxWidth()
+                ) { index, suggestion ->
+                    if (index > 0) {
+                        HorizontalDivider(color = BorderLight, thickness = 0.7.dp)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                location = suggestion.primaryText
+                                selectedLocationDisplayName = suggestion.primaryText
+                                selectedLocationDisplayAddress = parseDisplayAddress(
+                                    fullText = suggestion.fullText,
+                                    primaryText = suggestion.primaryText
+                                )
+                                selectedLocationLabel = suggestion.primaryText
+                                selectedLocationFullText = suggestion.fullText
+                                selectedLocationPlaceId = suggestion.placeId
+                                selectedLocationLat = null
+                                selectedLocationLng = null
+                                viewModel.hideLocationSuggestions()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = suggestion.primaryText,
+                                fontSize = 14.sp,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = suggestion.fullText,
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
             }
         }
         if (viewModel.locationError != null) {
@@ -440,7 +575,6 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             val maxVisibleFriends = 4
             val friendRowHeight = 68.dp
             val friendRowSpacing = 8.dp
-            val maxFriendsListHeight = (friendRowHeight * maxVisibleFriends) + (friendRowSpacing * (maxVisibleFriends - 1))
 
             when {
                 viewModel.isLoadingUsers -> {
@@ -494,88 +628,24 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     } else {
-                        if (filteredFriends.size <= maxVisibleFriends) {
-                            Column(verticalArrangement = Arrangement.spacedBy(friendRowSpacing)) {
-                                filteredFriends.forEach { friend ->
-                                    val isSelected = invitedFriends.contains(friend.id)
-                                    FriendRow(
-                                        friend = friend,
-                                        isSelected = isSelected,
-                                        onClick = {
-                                            invitedFriends = if (isSelected) invitedFriends - friend.id
-                                            else invitedFriends + friend.id
-                                        }
-                                    )
+                        ThresholdScrollableList(
+                            items = filteredFriends,
+                            maxVisibleItems = maxVisibleFriends,
+                            rowHeight = friendRowHeight,
+                            rowSpacing = friendRowSpacing,
+                            keySelector = { it.id },
+                            modifier = Modifier.fillMaxWidth(),
+                            onScrollInteractionChanged = { isFriendListInteracting = it }
+                        ) { _, friend ->
+                            val isSelected = invitedFriends.contains(friend.id)
+                            FriendRow(
+                                friend = friend,
+                                isSelected = isSelected,
+                                onClick = {
+                                    invitedFriends = if (isSelected) invitedFriends - friend.id
+                                    else invitedFriends + friend.id
                                 }
-                            }
-                        } else {
-                            val friendListState = rememberLazyListState()
-                            val density = LocalDensity.current
-                            val itemHeightPx = with(density) { (friendRowHeight + friendRowSpacing).toPx() }
-                            val viewportHeightPx = with(density) { maxFriendsListHeight.toPx() }
-                            val totalContentHeightPx = (itemHeightPx * filteredFriends.size) - with(density) { friendRowSpacing.toPx() }
-                            val maxScrollPx = (totalContentHeightPx - viewportHeightPx).coerceAtLeast(1f)
-                            val estimatedScrollPx = (friendListState.firstVisibleItemIndex * itemHeightPx) + friendListState.firstVisibleItemScrollOffset
-                            val scrollProgress = (estimatedScrollPx / maxScrollPx).coerceIn(0f, 1f)
-                            val thumbHeightPx = ((viewportHeightPx / totalContentHeightPx) * viewportHeightPx)
-                                .coerceIn(with(density) { 28.dp.toPx() }, viewportHeightPx)
-                            val thumbOffsetPx = (scrollProgress * (viewportHeightPx - thumbHeightPx)).coerceIn(0f, viewportHeightPx - thumbHeightPx)
-                            val thumbHeightDp = with(density) { thumbHeightPx.toDp() }
-                            val thumbOffsetDp = with(density) { thumbOffsetPx.toDp() }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(maxFriendsListHeight)
-                            ) {
-                                LazyColumn(
-                                    state = friendListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(end = 10.dp)
-                                        .pointerInput(filteredFriends.size) {
-                                            detectVerticalDragGestures(
-                                                onDragStart = { isFriendListInteracting = true },
-                                                onVerticalDrag = { _, _ -> },
-                                                onDragEnd = { isFriendListInteracting = false },
-                                                onDragCancel = { isFriendListInteracting = false }
-                                            )
-                                        },
-                                    verticalArrangement = Arrangement.spacedBy(friendRowSpacing)
-                                ) {
-                                    items(filteredFriends, key = { it.id }) { friend ->
-                                        val isSelected = invitedFriends.contains(friend.id)
-                                        FriendRow(
-                                            friend = friend,
-                                            isSelected = isSelected,
-                                            onClick = {
-                                                invitedFriends = if (isSelected) invitedFriends - friend.id
-                                                else invitedFriends + friend.id
-                                            }
-                                        )
-                                    }
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.CenterEnd)
-                                        .padding(end = 2.dp)
-                                        .width(4.dp)
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(99.dp))
-                                        .background(PrimaryBlue.copy(alpha = 0.12f))
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(end = 2.dp, top = thumbOffsetDp)
-                                        .width(4.dp)
-                                        .height(thumbHeightDp)
-                                        .clip(RoundedCornerShape(99.dp))
-                                        .background(PrimaryBlue.copy(alpha = 0.9f))
-                                )
-                            }
+                            )
                         }
                     }
                 }
@@ -592,31 +662,208 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                     selectedHour = selectedHour,
                     selectedMinute = selectedMinute,
                     isPm = isPm,
-                    location = location
+                    location = location,
+                    locationPlaceId = selectedLocationPlaceId
                 )) {
-                    viewModel.saveActivity(
-                        name = activityName,
-                        description = description,
-                        workoutType = workoutType,
-                        location = location,
-                        date = selectedDate?.toString() ?: "",
-                        time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
-                        invitedUserIds = invitedFriends.toList()
-                    )
+                    coroutineScope.launch {
+                        var resolvedLocation = location
+                        var resolvedPlaceId = selectedLocationPlaceId
+                        var resolvedLat = selectedLocationLat
+                        var resolvedLng = selectedLocationLng
+                        var resolvedDisplayName = selectedLocationDisplayName
+                        var resolvedDisplayAddress = selectedLocationDisplayAddress
+
+                        val shouldFetchPlace = selectedLocationPlaceId.isNotBlank() &&
+                            selectedLocationPlaceId != lastResolvedPlaceId
+
+                        if (shouldFetchPlace) {
+                            val resolvedResult = viewModel.resolveLocationForSubmit(
+                                context = context,
+                                selectedLocationPlaceId = selectedLocationPlaceId,
+                                selectedLocationDisplayName = selectedLocationDisplayName.ifBlank { selectedLocationLabel },
+                                selectedLocationFullText = selectedLocationFullText,
+                                fallbackLocation = location
+                            )
+
+                            if (resolvedResult.isFailure) {
+                                Toast.makeText(
+                                    context,
+                                    resolvedResult.exceptionOrNull()?.message ?: "Unable to resolve selected location",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@launch
+                            }
+
+                            val resolved = resolvedResult.getOrNull()
+                            if (resolved != null) {
+                                resolvedLocation = resolved.location
+                                resolvedPlaceId = resolved.placeId
+                                resolvedLat = resolved.lat
+                                resolvedLng = resolved.lng
+                                resolvedDisplayName = resolved.displayName
+                                resolvedDisplayAddress = resolved.displayAddress
+
+                                selectedLocationLat = resolvedLat
+                                selectedLocationLng = resolvedLng
+                                selectedLocationPlaceId = resolvedPlaceId
+                                selectedLocationDisplayName = resolvedDisplayName
+                                selectedLocationDisplayAddress = resolvedDisplayAddress
+
+                                lastResolvedPlaceId = resolvedPlaceId
+                                lastResolvedLocation = resolvedLocation
+                                lastResolvedDisplayName = resolvedDisplayName
+                                lastResolvedDisplayAddress = resolvedDisplayAddress
+                                lastResolvedLat = resolvedLat
+                                lastResolvedLng = resolvedLng
+                            }
+                        } else if (selectedLocationPlaceId == lastResolvedPlaceId && lastResolvedPlaceId.isNotBlank()) {
+                            resolvedLocation = lastResolvedLocation.ifBlank { selectedLocationFullText.ifBlank { location } }
+                            resolvedPlaceId = lastResolvedPlaceId
+                            resolvedDisplayName = lastResolvedDisplayName.ifBlank { selectedLocationDisplayName }
+                            resolvedDisplayAddress = lastResolvedDisplayAddress
+                            resolvedLat = lastResolvedLat
+                            resolvedLng = lastResolvedLng
+                            selectedLocationLat = resolvedLat
+                            selectedLocationLng = resolvedLng
+                            selectedLocationDisplayName = resolvedDisplayName
+                            selectedLocationDisplayAddress = resolvedDisplayAddress
+                        }
+                        viewModel.resetLocationSearchSession()
+
+                        viewModel.saveActivity(
+                            name = activityName,
+                            description = description,
+                            workoutType = workoutType,
+                            location = resolvedLocation,
+                            locationDisplayName = resolvedDisplayName,
+                            locationDisplayAddress = resolvedDisplayAddress,
+                            locationPlaceId = resolvedPlaceId,
+                            locationLat = resolvedLat,
+                            locationLng = resolvedLng,
+                            date = selectedDate?.toString() ?: "",
+                            time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
+                            invitedUserIds = invitedFriends.toList()
+                        )
+                    }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .height(56.dp),
+            enabled = !viewModel.isSaving && !viewModel.isResolvingLocation,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
         ) {
-            Text("Create Workout", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (viewModel.isResolvingLocation) "Resolving location..." else "Create Workout",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
         Spacer(Modifier.height(100.dp))
     }
+}
+
+@Composable
+private fun <T> ThresholdScrollableList(
+    items: List<T>,
+    maxVisibleItems: Int,
+    rowHeight: Dp,
+    rowSpacing: Dp,
+    keySelector: (T) -> Any,
+    modifier: Modifier = Modifier,
+    onScrollInteractionChanged: ((Boolean) -> Unit)? = null,
+    itemContent: @Composable (index: Int, item: T) -> Unit
+) {
+    if (items.isEmpty()) return
+
+    val scrollable = items.size > maxVisibleItems
+    if (!scrollable) {
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(rowSpacing)
+        ) {
+            items.forEachIndexed { index, item ->
+                itemContent(index, item)
+            }
+        }
+        return
+    }
+
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val maxListHeight = (rowHeight * maxVisibleItems) + (rowSpacing * (maxVisibleItems - 1))
+    val itemHeightPx = with(density) { (rowHeight + rowSpacing).toPx() }
+    val viewportHeightPx = with(density) { maxListHeight.toPx() }
+    val spacingPx = with(density) { rowSpacing.toPx() }
+    val totalContentHeightPx = (itemHeightPx * items.size) - spacingPx
+    val maxScrollPx = (totalContentHeightPx - viewportHeightPx).coerceAtLeast(1f)
+    val estimatedScrollPx = (listState.firstVisibleItemIndex * itemHeightPx) + listState.firstVisibleItemScrollOffset
+    val scrollProgress = (estimatedScrollPx / maxScrollPx).coerceIn(0f, 1f)
+    val thumbHeightPx = ((viewportHeightPx / totalContentHeightPx) * viewportHeightPx)
+        .coerceIn(with(density) { 24.dp.toPx() }, viewportHeightPx)
+    val thumbOffsetPx = (scrollProgress * (viewportHeightPx - thumbHeightPx)).coerceIn(0f, viewportHeightPx - thumbHeightPx)
+    val thumbHeightDp = with(density) { thumbHeightPx.toDp() }
+    val thumbOffsetDp = with(density) { thumbOffsetPx.toDp() }
+
+    Box(
+        modifier = modifier.height(maxListHeight)
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 10.dp)
+                .pointerInput(items.size) {
+                    detectVerticalDragGestures(
+                        onDragStart = { onScrollInteractionChanged?.invoke(true) },
+                        onVerticalDrag = { _, _ -> },
+                        onDragEnd = { onScrollInteractionChanged?.invoke(false) },
+                        onDragCancel = { onScrollInteractionChanged?.invoke(false) }
+                    )
+                },
+            verticalArrangement = Arrangement.spacedBy(rowSpacing)
+        ) {
+            itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
+                itemContent(index, item)
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 2.dp)
+                .width(4.dp)
+                .fillMaxSize()
+                .clip(RoundedCornerShape(99.dp))
+                .background(PrimaryBlue.copy(alpha = 0.12f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 2.dp, top = thumbOffsetDp)
+                .width(4.dp)
+                .height(thumbHeightDp)
+                .clip(RoundedCornerShape(99.dp))
+                .background(PrimaryBlue.copy(alpha = 0.9f))
+        )
+    }
+}
+
+private fun parseDisplayAddress(fullText: String, primaryText: String): String {
+    val normalizedFull = fullText.trim()
+    if (normalizedFull.isEmpty()) return ""
+
+    val normalizedPrimary = primaryText.trim()
+    if (normalizedPrimary.isEmpty()) return normalizedFull
+
+    return normalizedFull
+        .removePrefix(normalizedPrimary)
+        .removePrefix(",")
+        .trim()
 }
 
 private fun User.toFriend(): Friend {

@@ -1,5 +1,9 @@
 package com.builderbears.align.ui.screens.schedule
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +52,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -263,6 +268,8 @@ private fun DayRow(day: ScheduledDay) {
 
 @Composable
 private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -320,7 +327,16 @@ private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(6.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = if (!event.locationDirectionsUrl.isNullOrBlank()) {
+                    Modifier.clickable {
+                        openDirections(context, event.locationDirectionsUrl)
+                    }
+                } else {
+                    Modifier
+                },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     Icons.Outlined.LocationOn,
                     contentDescription = null,
@@ -328,17 +344,30 @@ private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(3.dp))
-                Text(
-                    text = event.location,
-                    fontSize = 12.sp,
-                    color = PrimaryBlue,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = event.locationDisplayName.ifBlank { event.location },
+                        fontSize = 12.sp,
+                        color = PrimaryBlue,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (event.locationDisplayAddress.isNotBlank()) {
+                        Text(
+                            text = event.locationDisplayAddress,
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     Icons.Outlined.OpenInNew,
                     contentDescription = null,
-                    tint = PrimaryBlue,
+                    tint = if (!event.locationDirectionsUrl.isNullOrBlank()) PrimaryBlue else TextSecondary,
                     modifier = Modifier.size(12.dp)
                 )
             }
@@ -356,6 +385,28 @@ private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
                 )
             }
         }
+    }
+}
+
+private fun openDirections(context: android.content.Context, url: String?) {
+    if (url.isNullOrBlank()) return
+
+    val uri = Uri.parse(url)
+    val mapsIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+        setPackage("com.google.android.apps.maps")
+    }
+
+    try {
+        context.startActivity(mapsIntent)
+    } catch (_: ActivityNotFoundException) {
+        try {
+            val fallbackIntent = Intent(Intent.ACTION_VIEW, uri)
+            context.startActivity(fallbackIntent)
+        } catch (_: Exception) {
+            Toast.makeText(context, "Unable to open maps", Toast.LENGTH_SHORT).show()
+        }
+    } catch (_: Exception) {
+        Toast.makeText(context, "Unable to open maps", Toast.LENGTH_SHORT).show()
     }
 }
 
