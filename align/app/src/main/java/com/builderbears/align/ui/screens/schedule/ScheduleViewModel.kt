@@ -1,5 +1,6 @@
 package com.builderbears.align.ui.screens.schedule
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -98,6 +99,11 @@ class ScheduleViewModel : ViewModel() {
 				title = activity.name.ifBlank { "Untitled workout" },
 				time = activity.time.ifBlank { "Time TBD" },
 				location = activity.location.ifBlank { "Location TBD" },
+				locationDisplayName = activity.locationDisplayName.ifBlank {
+					activity.location.ifBlank { "Location TBD" }
+				},
+				locationDisplayAddress = activity.locationDisplayAddress,
+				locationDirectionsUrl = buildDirectionsUrl(activity),
 				type = typeMeta.label,
 				typeEmoji = typeMeta.emoji,
 				typeColor = typeMeta.color,
@@ -127,6 +133,47 @@ class ScheduleViewModel : ViewModel() {
 		if (raw.isBlank()) return null
 		val normalized = raw.trim().uppercase(Locale.US)
 		return runCatching { LocalTime.parse(normalized, formatter) }.getOrNull()
+	}
+
+	private fun buildDirectionsUrl(activity: Activity): String? {
+		val lat = activity.locationLat
+		val lng = activity.locationLng
+		if (lat != null && lng != null) {
+			return Uri.Builder()
+				.scheme("https")
+				.authority("www.google.com")
+				.path("maps/dir/")
+				.appendQueryParameter("api", "1")
+				.appendQueryParameter("destination", "$lat,$lng")
+				.build()
+				.toString()
+		}
+
+		val placeId = activity.locationPlaceId.trim()
+		if (placeId.isNotEmpty()) {
+			return Uri.Builder()
+				.scheme("https")
+				.authority("www.google.com")
+				.path("maps/dir/")
+				.appendQueryParameter("api", "1")
+				.appendQueryParameter("destination_place_id", placeId)
+				.build()
+				.toString()
+		}
+
+		val locationText = activity.location.trim()
+		if (locationText.isNotEmpty()) {
+			return Uri.Builder()
+				.scheme("https")
+				.authority("www.google.com")
+				.path("maps/dir/")
+				.appendQueryParameter("api", "1")
+				.appendQueryParameter("destination", locationText)
+				.build()
+				.toString()
+		}
+
+		return null
 	}
 
 	private fun workoutTypeMeta(type: String): TypeMeta {
