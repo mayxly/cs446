@@ -77,6 +77,8 @@ import com.builderbears.align.ui.theme.AvatarGreen2
 import com.builderbears.align.ui.theme.AvatarOrange
 import com.builderbears.align.ui.theme.AvatarPink
 import com.builderbears.align.ui.theme.AvatarYellow
+import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
@@ -130,6 +132,7 @@ fun YouScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var pushNotificationsEnabled by remember { mutableStateOf(true) }
     var profileImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var showInbox by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -195,14 +198,22 @@ fun YouScreen(
             }
             .verticalScroll(scrollState)
     ) {
-        // Title
-        Text(
-            text = "You",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 16.dp)
-        )
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "You",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            NotificationButton(onClick = { showInbox = true })
+        }
 
         HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
@@ -555,6 +566,12 @@ fun YouScreen(
         DevToolsCard(context)
 
         Spacer(Modifier.height(100.dp))
+    }
+
+    if (showInbox) {
+        InboxScreen(
+            onDismiss = { showInbox = false }
+        )
     }
 }
 

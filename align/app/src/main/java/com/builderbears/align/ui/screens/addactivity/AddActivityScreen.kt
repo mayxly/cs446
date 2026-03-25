@@ -75,6 +75,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.builderbears.align.data.model.User
 import com.builderbears.align.ui.navigation.Route
+import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.ErrorRed
@@ -139,6 +141,7 @@ fun AddActivityScreen(
 
     var showCalendar   by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showInbox by remember { mutableStateOf(false) }
     var friendSearchQuery by remember { mutableStateOf("") }
 
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
@@ -308,7 +311,7 @@ fun AddActivityScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 16.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -326,6 +329,8 @@ fun AddActivityScreen(
                         tint = TextSecondary
                     )
                 }
+            } else {
+                NotificationButton(onClick = { showInbox = true })
             }
         }
 
@@ -875,6 +880,12 @@ fun AddActivityScreen(
         }
 
         Spacer(Modifier.height(100.dp))
+    }
+
+    if (showInbox) {
+        InboxScreen(
+            onDismiss = { showInbox = false }
+        )
     }
 }
 
