@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
@@ -46,6 +47,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -70,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.data.service.NotificationService
 import com.builderbears.align.ui.theme.AvatarGreen
@@ -133,6 +136,7 @@ fun YouScreen(
     var pushNotificationsEnabled by remember { mutableStateOf(true) }
     var profileImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showInbox by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -212,7 +216,26 @@ fun YouScreen(
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
-            NotificationButton(onClick = { showInbox = true })
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = CardWhite,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clickable { showLogoutDialog = true }
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Logout,
+                            contentDescription = "Log out",
+                            tint = Color(0xFFF25555),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                NotificationButton(onClick = { showInbox = true })
+            }
         }
 
         HorizontalDivider(color = BorderLight, thickness = 1.dp)
@@ -572,6 +595,58 @@ fun YouScreen(
         InboxScreen(
             onDismiss = { showInbox = false }
         )
+    }
+
+    if (showLogoutDialog) {
+        Dialog(onDismissRequest = { showLogoutDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CardWhite),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 22.dp, vertical = 22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Are you sure you want to log out?",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        lineHeight = 23.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                showLogoutDialog = false
+                                onLogout()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF25555))
+                        ) {
+                            Text("Log Out", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = { showLogoutDialog = false },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3E6EF))
+                        ) {
+                            Text("Cancel", color = Color(0xFF7C8394), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
