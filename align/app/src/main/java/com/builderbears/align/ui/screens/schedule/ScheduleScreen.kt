@@ -73,6 +73,7 @@ import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.InputBackground
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
@@ -242,7 +243,7 @@ fun ScheduleScreen(
                     .fillMaxSize()
                     .padding(horizontal = 10.dp, vertical = 16.dp),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                colors = CardDefaults.cardColors(containerColor = InputBackground)
             ) {
                 AddActivityScreen(
                     activityId = activityId,
