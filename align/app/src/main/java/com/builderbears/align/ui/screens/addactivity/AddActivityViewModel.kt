@@ -52,6 +52,10 @@ class AddActivityViewModel : ViewModel() {
     var isSaving by mutableStateOf(false)
     var saveError by mutableStateOf<String?>(null)
     var saveSuccess by mutableStateOf(false)
+    var editingActivity by mutableStateOf<Activity?>(null)
+        private set
+    var isLoadingEditingActivity by mutableStateOf(false)
+        private set
     var isLoadingUsers by mutableStateOf(false)
         private set
     var availableUsers by mutableStateOf<List<User>>(emptyList())
@@ -349,6 +353,157 @@ class AddActivityViewModel : ViewModel() {
             activityService.createActivity(activity)
                 .onSuccess { saveSuccess = true }
                 .onFailure { saveError = it.message }
+
+            isSaving = false
+        }
+    }
+
+    fun clearEditingActivity() {
+        editingActivity = null
+        isLoadingEditingActivity = false
+    }
+
+    fun loadActivityForEdit(activityId: String) {
+        if (activityId.isBlank()) {
+            saveError = "Invalid activity"
+            return
+        }
+
+        if (currentUserId.isEmpty()) {
+            saveError = "Not logged in"
+            return
+        }
+
+        if (editingActivity?.activityId == activityId) {
+            return
+        }
+
+        viewModelScope.launch {
+            isLoadingEditingActivity = true
+            saveError = null
+
+            activityService.getActivity(currentUserId, activityId)
+                .onSuccess { activity ->
+                    if (activity == null) {
+                        saveError = "Activity not found"
+                        editingActivity = null
+                    } else {
+                        editingActivity = activity
+                    }
+                }
+                .onFailure { e ->
+                    saveError = e.message ?: "Failed to load activity"
+                    editingActivity = null
+                }
+
+            isLoadingEditingActivity = false
+        }
+    }
+
+    fun updateActivity(
+        activityId: String,
+        name: String,
+        description: String,
+        workoutType: String,
+        location: String,
+        locationDisplayName: String,
+        locationDisplayAddress: String,
+        locationPlaceId: String,
+        locationLat: Double?,
+        locationLng: Double?,
+        date: String,
+        time: String,
+        invitedUserIds: List<String> = emptyList(),
+        imageUrl: String? = null
+    ) {
+        if (currentUserId.isEmpty()) {
+            saveError = "Not logged in"
+            return
+        }
+
+        if (activityId.isBlank()) {
+            saveError = "Invalid activity"
+            return
+        }
+
+        viewModelScope.launch {
+            isSaving = true
+            saveError = null
+
+            val existing = activityService.getActivity(currentUserId, activityId).getOrNull()
+            if (existing == null) {
+                saveError = "Activity not found"
+                isSaving = false
+                return@launch
+            }
+
+            val selectedInvitees = availableUsers
+                .filter { it.userId in invitedUserIds }
+                .map { ActivityParticipant(userId = it.userId, name = it.name) }
+
+            val currentUser = availableUsers.firstOrNull { it.userId == currentUserId }
+                ?: userService.getUser(currentUserId).getOrNull()
+
+            val currentParticipant = ActivityParticipant(
+                userId = currentUserId,
+                name = currentUser?.name ?: "You"
+            )
+
+            val participants = (selectedInvitees + currentParticipant)
+                .distinctBy { it.userId }
+            val participantIds = participants.map { it.userId }
+
+            val participantUpdateResult = activityService.updateParticipants(
+                activityId = activityId,
+                oldParticipantIds = existing.participantIds,
+                newParticipants = participants
+            )
+
+            if (participantUpdateResult.isFailure) {
+                saveError = participantUpdateResult.exceptionOrNull()?.message ?: "Failed to update participants"
+                isSaving = false
+                return@launch
+            }
+
+            val updates = mutableMapOf<String, Any>(
+                "name" to name,
+                "description" to description,
+                "workoutType" to workoutType,
+                "location" to location,
+                "locationDisplayName" to locationDisplayName,
+                "locationDisplayAddress" to locationDisplayAddress,
+                "locationPlaceId" to locationPlaceId,
+                "date" to date,
+                "time" to time
+            )
+
+            locationLat?.let { updates["locationLat"] = it }
+            locationLng?.let { updates["locationLng"] = it }
+            imageUrl?.let { updates["imageUrl"] = it }
+
+            activityService.updateActivity(activityId, participantIds, updates)
+                .onSuccess {
+                    saveSuccess = true
+                    editingActivity = existing.copy(
+                        name = name,
+                        description = description,
+                        workoutType = workoutType,
+                        location = location,
+                        locationDisplayName = locationDisplayName,
+                        locationDisplayAddress = locationDisplayAddress,
+                        locationPlaceId = locationPlaceId,
+                        locationLat = locationLat,
+                        locationLng = locationLng,
+                        date = date,
+                        time = time,
+                        participantIds = participantIds,
+                        participants = participants,
+                        imageUrl = imageUrl ?: existing.imageUrl
+                    )
+                }
+                .onFailure {
+                    saveError = it.message ?: "Failed to update activity"
+                }
 
             isSaving = false
         }

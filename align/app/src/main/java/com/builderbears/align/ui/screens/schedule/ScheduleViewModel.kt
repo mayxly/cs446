@@ -38,12 +38,138 @@ class ScheduleViewModel : ViewModel() {
 	var uiState by mutableStateOf(ScheduleUiState(isLoading = true))
 		private set
 
+	var actionError by mutableStateOf<String?>(null)
+		private set
+
+	var actionMessage by mutableStateOf<String?>(null)
+		private set
+
+	var isActionInProgress by mutableStateOf(false)
+		private set
+
+	var editableWorkout by mutableStateOf<EditableWorkout?>(null)
+		private set
+
+	var isLoadingEditableWorkout by mutableStateOf(false)
+		private set
+
 	init {
 		loadSchedule()
 	}
 
 	fun reload() {
 		loadSchedule()
+	}
+
+	fun clearActionError() {
+		actionError = null
+	}
+
+	fun consumeActionMessage() {
+		actionMessage = null
+	}
+
+	fun dismissEditWorkout() {
+		editableWorkout = null
+	}
+
+	fun beginEditWorkout(activityId: String) {
+		val userId = auth.currentUser?.uid
+		if (userId.isNullOrBlank()) {
+			actionError = "Not logged in"
+			return
+		}
+
+		viewModelScope.launch {
+			isLoadingEditableWorkout = true
+			actionError = null
+
+			activityService.getActivity(userId, activityId)
+				.onSuccess { activity ->
+					if (activity == null) {
+						actionError = "Workout not found"
+						editableWorkout = null
+					} else {
+						editableWorkout = EditableWorkout(
+							activityId = activity.activityId,
+							name = activity.name,
+							description = activity.description,
+							workoutType = activity.workoutType,
+							date = activity.date,
+							time = activity.time
+						)
+					}
+				}
+				.onFailure { e ->
+					actionError = e.message ?: "Failed to load workout"
+					editableWorkout = null
+				}
+
+			isLoadingEditableWorkout = false
+		}
+	}
+
+	fun leaveWorkout(activityId: String) {
+		val userId = auth.currentUser?.uid
+		if (userId.isNullOrBlank()) {
+			actionError = "Not logged in"
+			return
+		}
+
+		viewModelScope.launch {
+			isActionInProgress = true
+			actionError = null
+
+			activityService.leaveActivity(activityId, userId)
+				.onSuccess {
+					actionMessage = "Left workout"
+					loadSchedule()
+				}
+				.onFailure { e ->
+					actionError = e.message ?: "Failed to leave workout"
+				}
+
+			isActionInProgress = false
+		}
+	}
+
+	fun saveWorkoutEdits(draft: EditableWorkout) {
+		val userId = auth.currentUser?.uid
+		if (userId.isNullOrBlank()) {
+			actionError = "Not logged in"
+			return
+		}
+
+		val trimmedName = draft.name.trim()
+		if (trimmedName.isBlank()) {
+			actionError = "Workout name is required"
+			return
+		}
+
+		val updates = mapOf(
+			"name" to trimmedName,
+			"description" to draft.description.trim(),
+			"workoutType" to draft.workoutType.trim(),
+			"date" to draft.date.trim(),
+			"time" to draft.time.trim()
+		)
+
+		viewModelScope.launch {
+			isActionInProgress = true
+			actionError = null
+
+			activityService.editActivity(draft.activityId, userId, updates)
+				.onSuccess {
+					actionMessage = "Workout updated"
+					editableWorkout = null
+					loadSchedule()
+				}
+				.onFailure { e ->
+					actionError = e.message ?: "Failed to update workout"
+				}
+
+			isActionInProgress = false
+		}
 	}
 
 	private fun loadSchedule() {
@@ -95,7 +221,7 @@ class ScheduleViewModel : ViewModel() {
 			}
 
 			val event = WorkoutEvent(
-				id = activity.activityId.ifBlank { "${activity.name}-${date}" },
+				id = activity.activityId,
 				title = activity.name.ifBlank { "Untitled workout" },
 				time = activity.time.ifBlank { "Time TBD" },
 				location = activity.location.ifBlank { "Location TBD" },
@@ -190,6 +316,15 @@ class ScheduleViewModel : ViewModel() {
 		}
 	}
 }
+
+data class EditableWorkout(
+	val activityId: String,
+	val name: String,
+	val description: String,
+	val workoutType: String,
+	val date: String,
+	val time: String
+)
 
 private data class TypeMeta(
 	val emoji: String,

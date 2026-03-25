@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
@@ -44,6 +45,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -88,8 +90,10 @@ import com.builderbears.align.ui.utils.userColorForId
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 
 data class Friend(val id: String, val name: String, val handle: String, val initials: String, val color: Color)
@@ -100,8 +104,15 @@ private val workoutTypes = listOf(
 )
 
 @Composable
-fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewModel = viewModel()) {
+fun AddActivityScreen(
+    navController: NavController? = null,
+    activityId: String? = null,
+    isModal: Boolean = false,
+    onDismissRequest: (() -> Unit)? = null,
+    viewModel: AddActivityViewModel = viewModel()
+) {
     val context = LocalContext.current
+    val isEditMode = !activityId.isNullOrBlank()
 
     var activityName   by remember { mutableStateOf("") }
     var selectedDate   by remember { mutableStateOf<LocalDate?>(null) }
@@ -138,6 +149,53 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
     }
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(activityId) {
+        if (isEditMode) {
+            viewModel.loadActivityForEdit(activityId.orEmpty())
+        } else {
+            viewModel.clearEditingActivity()
+        }
+    }
+
+    LaunchedEffect(viewModel.editingActivity?.activityId, isEditMode, currentUserId) {
+        if (!isEditMode) return@LaunchedEffect
+
+        val activity = viewModel.editingActivity ?: return@LaunchedEffect
+
+        activityName = activity.name
+        selectedDate = runCatching { LocalDate.parse(activity.date) }.getOrNull()
+
+        val parsed = parsePickerTime(activity.time)
+        selectedHour = parsed.hour
+        selectedMinute = parsed.minute
+        isPm = parsed.isPm
+
+        location = activity.location
+        selectedLocationPlaceId = activity.locationPlaceId
+        selectedLocationLat = activity.locationLat
+        selectedLocationLng = activity.locationLng
+        selectedLocationDisplayName = activity.locationDisplayName
+        selectedLocationDisplayAddress = activity.locationDisplayAddress
+        selectedLocationLabel = activity.locationDisplayName.ifBlank { activity.location }
+        selectedLocationFullText = listOf(
+            activity.locationDisplayName,
+            activity.locationDisplayAddress
+        ).filter { it.isNotBlank() }.joinToString(", ").ifBlank { activity.location }
+
+        lastResolvedPlaceId = activity.locationPlaceId
+        lastResolvedLocation = activity.location
+        lastResolvedDisplayName = activity.locationDisplayName
+        lastResolvedDisplayAddress = activity.locationDisplayAddress
+        lastResolvedLat = activity.locationLat
+        lastResolvedLng = activity.locationLng
+
+        workoutType = activity.workoutType.ifBlank { "Run" }
+        description = activity.description
+        invitedFriends = activity.participantIds
+            .filter { it.isNotBlank() && it != currentUserId }
+            .toSet()
+    }
+
     LaunchedEffect(viewModel.saveSuccess) {
         if (viewModel.saveSuccess) {
             activityName = ""
@@ -164,11 +222,15 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             description = ""
             invitedFriends = setOf<String>()
             viewModel.saveSuccess = false
-            navController.navigate(Route.Schedule.path) {
-                // Reset to root feed before showing schedule to keep backstack clean.
-                popUpTo(Route.Feed.path) { inclusive = false }
-                launchSingleTop = true
-                restoreState = false
+            if (isModal) {
+                onDismissRequest?.invoke()
+            } else {
+                navController?.navigate(Route.Schedule.path) {
+                    // Reset to root feed before showing schedule to keep backstack clean.
+                    popUpTo(Route.Feed.path) { inclusive = false }
+                    launchSingleTop = true
+                    restoreState = false
+                }
             }
         }
     }
@@ -177,7 +239,7 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
         if (viewModel.saveError != null) {
             Toast.makeText(
                 context,
-                "Failed to create activity: ${viewModel.saveError}",
+                "Failed to ${if (isEditMode) "update" else "create"} activity: ${viewModel.saveError}",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -189,6 +251,16 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
 
     val scrollState = rememberScrollState()
     var isFriendListInteracting by remember { mutableStateOf(false) }
+
+    if (isEditMode && viewModel.isLoadingEditingActivity) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = PrimaryBlue)
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -233,13 +305,29 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             }
                 .verticalScroll(scrollState, enabled = !isFriendListInteracting)
     ) {
-        Text(
-            text = "Add Activity",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isEditMode) "Edit Workout" else "Add Activity",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            if (isModal) {
+                IconButton(onClick = { onDismissRequest?.invoke() }) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = TextSecondary
+                    )
+                }
+            }
+        }
 
         HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
@@ -730,20 +818,38 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
                         }
                         viewModel.resetLocationSearchSession()
 
-                        viewModel.saveActivity(
-                            name = activityName,
-                            description = description,
-                            workoutType = workoutType,
-                            location = resolvedLocation,
-                            locationDisplayName = resolvedDisplayName,
-                            locationDisplayAddress = resolvedDisplayAddress,
-                            locationPlaceId = resolvedPlaceId,
-                            locationLat = resolvedLat,
-                            locationLng = resolvedLng,
-                            date = selectedDate?.toString() ?: "",
-                            time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
-                            invitedUserIds = invitedFriends.toList()
-                        )
+                        if (isEditMode) {
+                            viewModel.updateActivity(
+                                activityId = activityId.orEmpty(),
+                                name = activityName,
+                                description = description,
+                                workoutType = workoutType,
+                                location = resolvedLocation,
+                                locationDisplayName = resolvedDisplayName,
+                                locationDisplayAddress = resolvedDisplayAddress,
+                                locationPlaceId = resolvedPlaceId,
+                                locationLat = resolvedLat,
+                                locationLng = resolvedLng,
+                                date = selectedDate?.toString() ?: "",
+                                time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
+                                invitedUserIds = invitedFriends.toList()
+                            )
+                        } else {
+                            viewModel.saveActivity(
+                                name = activityName,
+                                description = description,
+                                workoutType = workoutType,
+                                location = resolvedLocation,
+                                locationDisplayName = resolvedDisplayName,
+                                locationDisplayAddress = resolvedDisplayAddress,
+                                locationPlaceId = resolvedPlaceId,
+                                locationLat = resolvedLat,
+                                locationLng = resolvedLng,
+                                date = selectedDate?.toString() ?: "",
+                                time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')} ${if (isPm) "PM" else "AM"}",
+                                invitedUserIds = invitedFriends.toList()
+                            )
+                        }
                     }
                 }
             },
@@ -756,7 +862,13 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
         ) {
             Text(
-                if (viewModel.isResolvingLocation) "Resolving location..." else "Create Workout",
+                if (viewModel.isResolvingLocation) {
+                    "Resolving location..."
+                } else if (isEditMode) {
+                    "Save Workout"
+                } else {
+                    "Create Workout"
+                },
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -764,6 +876,31 @@ fun AddActivityScreen(navController: NavController, viewModel: AddActivityViewMo
 
         Spacer(Modifier.height(100.dp))
     }
+}
+
+private data class PickerTime(
+    val hour: Int,
+    val minute: Int,
+    val isPm: Boolean
+)
+
+private fun parsePickerTime(raw: String): PickerTime {
+    val formatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+    val parsed = runCatching {
+        LocalTime.parse(raw.trim().uppercase(Locale.US), formatter)
+    }.getOrNull() ?: return PickerTime(hour = 2, minute = 10, isPm = true)
+
+    val hour12 = when {
+        parsed.hour == 0 -> 12
+        parsed.hour > 12 -> parsed.hour - 12
+        else -> parsed.hour
+    }
+
+    return PickerTime(
+        hour = hour12,
+        minute = parsed.minute,
+        isPm = parsed.hour >= 12
+    )
 }
 
 @Composable

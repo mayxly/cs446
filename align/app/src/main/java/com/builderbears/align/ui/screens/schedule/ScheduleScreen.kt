@@ -22,18 +22,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInNew
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,9 +57,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.NotificationCountBadge
 import com.builderbears.align.data.model.Attendee
@@ -79,13 +80,31 @@ import com.builderbears.align.ui.theme.TextMuted
 
 
 @Composable
-fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
+fun ScheduleScreen(
+    viewModel: ScheduleViewModel = viewModel()
+) {
     val uiState = viewModel.uiState
+    val context = LocalContext.current
     var showInbox by remember { mutableStateOf(false) }
+    var expandedMenuEventId by remember { mutableStateOf<String?>(null) }
+    var editingActivityId by remember { mutableStateOf<String?>(null) }
+    var leaveConfirmActivityId by remember { mutableStateOf<String?>(null) }
 
     // Refresh immediately on entering the screen to avoid showing stale data.
     LaunchedEffect(Unit) {
         viewModel.reload()
+    }
+
+    LaunchedEffect(viewModel.actionError) {
+        val message = viewModel.actionError ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.clearActionError()
+    }
+
+    LaunchedEffect(viewModel.actionMessage) {
+        val message = viewModel.actionMessage ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.consumeActionMessage()
     }
 
     Column(
@@ -181,7 +200,25 @@ fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
 
             else -> {
                 uiState.groups.forEach { group ->
-                    MonthSection(group)
+                    MonthSection(
+                        group = group,
+                        expandedMenuEventId = expandedMenuEventId,
+                        onMenuExpanded = { eventId ->
+                            expandedMenuEventId = if (expandedMenuEventId == eventId) null else eventId
+                        },
+                        onMenuDismiss = {
+                            expandedMenuEventId = null
+                        },
+                        onLeaveWorkout = { eventId ->
+                            expandedMenuEventId = null
+                            leaveConfirmActivityId = eventId
+                        },
+                        onEditWorkout = { eventId ->
+                            expandedMenuEventId = null
+                            editingActivityId = eventId
+                        },
+                        isActionInProgress = viewModel.isActionInProgress
+                    )
                 }
                 Spacer(Modifier.height(100.dp))
             }
@@ -193,10 +230,114 @@ fun ScheduleScreen(viewModel: ScheduleViewModel = viewModel()) {
             onDismiss = { showInbox = false }
         )
     }
+
+    editingActivityId?.let { activityId ->
+        Dialog(
+            onDismissRequest = { editingActivityId = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 16.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+            ) {
+                AddActivityScreen(
+                    activityId = activityId,
+                    isModal = true,
+                    onDismissRequest = {
+                        editingActivityId = null
+                        viewModel.reload()
+                    }
+                )
+            }
+        }
+    }
+
+    leaveConfirmActivityId?.let { activityId ->
+        LeaveWorkoutConfirmationDialog(
+            isLoading = viewModel.isActionInProgress,
+            onDismiss = {
+                if (!viewModel.isActionInProgress) {
+                    leaveConfirmActivityId = null
+                }
+            },
+            onConfirm = {
+                viewModel.leaveWorkout(activityId)
+                leaveConfirmActivityId = null
+            }
+        )
+    }
 }
 
 @Composable
-private fun MonthSection(group: MonthGroup) {
+private fun LeaveWorkoutConfirmationDialog(
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardWhite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Are you sure you want to leave the\nworkout?",
+                    color = TextPrimary,
+                    fontSize = 17.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onConfirm,
+                        enabled = !isLoading,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF25555))
+                    ) {
+                        Text("Leave", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Button(
+                        onClick = onDismiss,
+                        enabled = !isLoading,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3E6EF))
+                    ) {
+                        Text("Cancel", color = Color(0xFF7C8394), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthSection(
+    group: MonthGroup,
+    expandedMenuEventId: String?,
+    onMenuExpanded: (String) -> Unit,
+    onMenuDismiss: () -> Unit,
+    onLeaveWorkout: (String) -> Unit,
+    onEditWorkout: (String) -> Unit,
+    isActionInProgress: Boolean
+) {
     Text(
         text = group.month,
         fontSize = 12.sp,
@@ -207,7 +348,15 @@ private fun MonthSection(group: MonthGroup) {
     )
 
     group.days.forEach { day ->
-        DayRow(day)
+        DayRow(
+            day = day,
+            isMenuExpanded = expandedMenuEventId == day.event.id,
+            onMenuExpanded = { onMenuExpanded(day.event.id) },
+            onMenuDismiss = onMenuDismiss,
+            onLeaveWorkout = { onLeaveWorkout(day.event.id) },
+            onEditWorkout = { onEditWorkout(day.event.id) },
+            isActionInProgress = isActionInProgress
+        )
         Spacer(Modifier.height(16.dp))
     }
 
@@ -215,7 +364,15 @@ private fun MonthSection(group: MonthGroup) {
 }
 
 @Composable
-private fun DayRow(day: ScheduledDay) {
+private fun DayRow(
+    day: ScheduledDay,
+    isMenuExpanded: Boolean,
+    onMenuExpanded: () -> Unit,
+    onMenuDismiss: () -> Unit,
+    onLeaveWorkout: () -> Unit,
+    onEditWorkout: () -> Unit,
+    isActionInProgress: Boolean
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -262,12 +419,30 @@ private fun DayRow(day: ScheduledDay) {
 
         Spacer(Modifier.width(10.dp))
 
-        EventCard(event = day.event, modifier = Modifier.weight(1f))
+        EventCard(
+            event = day.event,
+            modifier = Modifier.weight(1f),
+            isMenuExpanded = isMenuExpanded,
+            onMenuExpanded = onMenuExpanded,
+            onMenuDismiss = onMenuDismiss,
+            onLeaveWorkout = onLeaveWorkout,
+            onEditWorkout = onEditWorkout,
+            isActionInProgress = isActionInProgress
+        )
     }
 }
 
 @Composable
-private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
+private fun EventCard(
+    event: WorkoutEvent,
+    modifier: Modifier = Modifier,
+    isMenuExpanded: Boolean,
+    onMenuExpanded: () -> Unit,
+    onMenuDismiss: () -> Unit,
+    onLeaveWorkout: () -> Unit,
+    onEditWorkout: () -> Unit,
+    isActionInProgress: Boolean
+) {
     val context = LocalContext.current
 
     Card(
@@ -378,11 +553,49 @@ private fun EventCard(event: WorkoutEvent, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(10.dp))
 
-            if (event.attendees.isNotEmpty()) {
-                EventAttendeesSummary(
-                    attendees = event.attendees,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (event.attendees.isNotEmpty()) {
+                    EventAttendeesSummary(
+                        attendees = event.attendees,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+
+                Box {
+                    IconButton(
+                        onClick = onMenuExpanded,
+                        enabled = !isActionInProgress,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreHoriz,
+                            contentDescription = "Workout actions",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = isMenuExpanded,
+                        onDismissRequest = onMenuDismiss
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Leave workout", color = Color(0xFFD32F2F)) },
+                            onClick = onLeaveWorkout,
+                            enabled = !isActionInProgress
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Edit workout", color = TextPrimary) },
+                            onClick = onEditWorkout,
+                            enabled = !isActionInProgress
+                        )
+                    }
+                }
             }
         }
     }

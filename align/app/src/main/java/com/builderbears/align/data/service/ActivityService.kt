@@ -133,6 +133,58 @@ class ActivityService {
         }
     }
 
+    suspend fun leaveActivity(activityId: String, userId: String): Result<Unit> {
+        return try {
+            if (userId.isBlank()) {
+                return Result.failure(IllegalArgumentException("Invalid user"))
+            }
+
+            val activity = getActivity(userId, activityId).getOrNull()
+                ?: return Result.failure(IllegalStateException("Activity not found"))
+
+            val oldIds = activity.participantIds.distinct().filter { it.isNotBlank() }
+            if (!oldIds.contains(userId)) {
+                return Result.success(Unit)
+            }
+
+            val remainingParticipants = activity.participants
+                .filter { it.userId != userId }
+                .filter { it.userId.isNotBlank() }
+                .distinctBy { it.userId }
+
+            updateParticipants(
+                activityId = activityId,
+                oldParticipantIds = oldIds,
+                newParticipants = remainingParticipants
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun editActivity(activityId: String, editorUserId: String, updates: Map<String, Any>): Result<Unit> {
+        return try {
+            if (editorUserId.isBlank()) {
+                return Result.failure(IllegalArgumentException("Invalid user"))
+            }
+
+            if (updates.isEmpty()) {
+                return Result.success(Unit)
+            }
+
+            val activity = getActivity(editorUserId, activityId).getOrNull()
+                ?: return Result.failure(IllegalStateException("Activity not found"))
+
+            updateActivity(
+                activityId = activityId,
+                participantIds = activity.participantIds,
+                updates = updates
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun deleteActivity(activityId: String, participantIds: List<String>): Result<Unit> {
         return try {
             val targets = participantIds.distinct().filter { it.isNotBlank() }
