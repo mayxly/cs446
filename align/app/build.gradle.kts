@@ -59,6 +59,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx:23.2.0")
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-storage")
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.android.libraries.places:places:3.5.0")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.0")
     implementation(libs.androidx.foundation.layout.android)
