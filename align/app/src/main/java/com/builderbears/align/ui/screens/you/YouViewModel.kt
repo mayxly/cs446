@@ -7,10 +7,14 @@ import com.builderbears.align.data.model.User
 import com.builderbears.align.data.service.ActivityService
 import com.builderbears.align.data.service.FriendService
 import com.builderbears.align.data.service.UserService
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -48,6 +52,13 @@ class YouViewModel : ViewModel() {
 
     private val _pushNotificationsEnabled = MutableStateFlow(false)
     val pushNotificationsEnabled: StateFlow<Boolean> = _pushNotificationsEnabled
+
+    // Password change
+    private val _passwordError = MutableStateFlow<String?>(null)
+    val passwordError: StateFlow<String?> = _passwordError
+
+    private val _passwordSuccess = MutableStateFlow(false)
+    val passwordSuccess: StateFlow<Boolean> = _passwordSuccess
 
     // Friends
     private val _friendStatuses = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -249,6 +260,52 @@ class YouViewModel : ViewModel() {
                     _user.value = _user.value?.copy(name = newName)
                 }
         }
+    }
+
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
+        _passwordError.value = null
+        _passwordSuccess.value = false
+
+        if (currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
+            _passwordError.value = "All fields are required"
+            return
+        }
+        if (newPassword.length < 8) {
+            _passwordError.value = "New password must be at least 8 characters"
+            return
+        }
+        if (newPassword != confirmPassword) {
+            _passwordError.value = "New passwords do not match"
+            return
+        }
+        if (newPassword == currentPassword) {
+            _passwordError.value = "New password must be different from current password"
+            return
+        }
+
+        val user = auth.currentUser ?: return
+        val email = user.email ?: return
+
+        viewModelScope.launch {
+            try {
+                val credential = EmailAuthProvider.getCredential(email, currentPassword)
+                user.reauthenticate(credential).await()
+                user.updatePassword(newPassword).await()
+                _passwordSuccess.value = true
+                _passwordError.value = null
+            } catch (e: FirebaseAuthInvalidCredentialsException) {
+                _passwordError.value = "Current password is incorrect"
+            } catch (e: FirebaseAuthWeakPasswordException) {
+                _passwordError.value = e.reason ?: "Password is too weak"
+            } catch (e: Exception) {
+                _passwordError.value = e.localizedMessage ?: "Failed to update password"
+            }
+        }
+    }
+
+    fun clearPasswordState() {
+        _passwordError.value = null
+        _passwordSuccess.value = false
     }
 
     fun setPushNotificationsEnabled(enabled: Boolean) {

@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -132,6 +134,8 @@ fun YouScreen(
     val acceptedFriends by viewModel.friends.collectAsState()
     val friendStatuses by viewModel.friendStatuses.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val passwordError by viewModel.passwordError.collectAsState()
+    val passwordSuccess by viewModel.passwordSuccess.collectAsState()
 
     // Local UI state
     var name by remember(user) { mutableStateOf(user?.name ?: "Your Name") }
@@ -473,6 +477,31 @@ fun YouScreen(
                             onValueChange = { confirmPassword = it },
                             placeholder = "Re-enter new password"
                         )
+                        if (passwordError != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = passwordError ?: "",
+                                fontSize = 13.sp,
+                                color = DestructiveAction
+                            )
+                        }
+                        if (passwordSuccess) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Password updated successfully",
+                                fontSize = 13.sp,
+                                color = PrimaryBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            LaunchedEffect(Unit) {
+                                delay(1500)
+                                showPasswordFields = false
+                                currentPassword = ""
+                                newPassword = ""
+                                confirmPassword = ""
+                                viewModel.clearPasswordState()
+                            }
+                        }
                         Spacer(Modifier.height(16.dp))
 
                         Row(
@@ -480,11 +509,7 @@ fun YouScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    // No persistent save yet
-                                    showPasswordFields = false
-                                    currentPassword = ""
-                                    newPassword = ""
-                                    confirmPassword = ""
+                                    viewModel.changePassword(currentPassword, newPassword, confirmPassword)
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -505,6 +530,7 @@ fun YouScreen(
                                     currentPassword = ""
                                     newPassword = ""
                                     confirmPassword = ""
+                                    viewModel.clearPasswordState()
                                 }
                             ) {
                                 Icon(
