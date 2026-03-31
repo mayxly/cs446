@@ -27,5 +27,6 @@ data class Activity (
     @set:PropertyName("isPosted")
     var isPosted: Boolean = false,
     val imageUrls: List<String> = emptyList(),
+    val participantNotes: Map<String, String> = emptyMap(),
     val reactions: Map<String, List<String>> = emptyMap()
 )

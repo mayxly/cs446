@@ -8,10 +8,17 @@ import java.util.UUID
 object StorageService {
     private val storage = FirebaseStorage.getInstance()
 
-    suspend fun uploadImage(storagePath: String, imageUri: Uri): Result<String> = try {
+    suspend fun uploadPhoto(storagePath: String, imageUri: Uri): Result<String> = try {
         val ref = storage.reference.child(storagePath)
         ref.putFile(imageUri).await()
         Result.success(ref.downloadUrl.await().toString())
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun deleteFileByUrl(downloadUrl: String): Result<Unit> = try {
+        storage.getReferenceFromUrl(downloadUrl).delete().await()
+        Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)
     }

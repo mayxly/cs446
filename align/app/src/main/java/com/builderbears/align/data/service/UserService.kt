@@ -128,7 +128,7 @@ class UserService {
     }
 
     suspend fun uploadProfilePhoto(userId: String, imageUri: Uri): Result<String> =
-        StorageService.uploadImage(StorageService.profilePhotoPath(userId), imageUri)
+        StorageService.uploadPhoto(StorageService.profilePhotoPath(userId), imageUri)
             .mapCatching { downloadUrl ->
                 usersCollection.document(userId).update("profilePhotoUrl", downloadUrl).await()
                 downloadUrl

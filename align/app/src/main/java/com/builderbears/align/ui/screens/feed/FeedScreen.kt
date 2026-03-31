@@ -26,24 +26,22 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,14 +61,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -225,15 +228,17 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(activities, key = { it.activityId }) { activity ->
+                        val canEdit = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
                         ActivityCard(
                             activity = activity,
                             currentUserId = currentUserId,
                             isUploading = activity.activityId in uploadingActivityIds,
                             onReactionClick = { emoji ->
+                                if (!canEdit) return@ActivityCard
                                 val hasReacted = activity.reactions[emoji]?.contains(currentUserId) == true
                                 if (hasReacted) {
                                     viewModel.removeReaction(activity.activityId, emoji)
@@ -256,9 +261,6 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                             },
                             onOpenNotes = {
                                 notesSheetActivityId = activity.activityId
-                            },
-                            onSubmitNote = { note ->
-                                viewModel.submitParticipantNote(activity.activityId, note)
                             }
                         )
                     }
@@ -305,8 +307,7 @@ private fun ActivityCard(
     onExpandPhoto: (String) -> Unit,
     onDeletePhoto: (String) -> Unit,
     onLeaveActivity: () -> Unit,
-    onOpenNotes: () -> Unit,
-    onSubmitNote: (String) -> Unit
+    onOpenNotes: () -> Unit
 ) {
     var showLeaveMenu by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
@@ -316,12 +317,14 @@ private fun ActivityCard(
     val noteCount = activity.participantNotes.values.count { it.isNotBlank() }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -342,75 +345,93 @@ private fun ActivityCard(
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    if (isParticipant) {
-                        Box {
-                            IconButton(
-                                onClick = { showLeaveMenu = true },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.MoreVert,
-                                    contentDescription = "Activity actions",
-                                    tint = TextSecondary
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showLeaveMenu,
-                                onDismissRequest = { showLeaveMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Leave activity") },
-                                    onClick = {
-                                        showLeaveMenu = false
-                                        showLeaveConfirm = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF0F0F0))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                if (isParticipant) {
+                    Box {
+                        IconButton(
+                            onClick = { showLeaveMenu = true },
+                            modifier = Modifier.size(28.dp)
                         ) {
-                            Text(
-                                text = activity.getWorkoutEmoji(),
-                                fontSize = 12.sp
+                            Icon(
+                                imageVector = Icons.Filled.MoreHoriz,
+                                contentDescription = "Activity actions",
+                                tint = TextSecondary
                             )
-                            Text(
-                                text = activity.workoutType,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
+                        }
+                        if (showLeaveMenu) {
+                            Popup(
+                                alignment = Alignment.TopEnd,
+                                offset = IntOffset(0, 44),
+                                onDismissRequest = { showLeaveMenu = false },
+                                properties = PopupProperties(focusable = true)
+                            ) {
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                                ) {
+                                    Text(
+                                        text = "Leave workout",
+                                        color = Color(0xFFB24545),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .clickable {
+                                                showLeaveMenu = false
+                                                showLeaveConfirm = true
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${formatActivityDate(activity.date)} • ${activity.time}",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF0F0F0))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = activity.getWorkoutEmoji(),
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = activity.workoutType,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    }
+                }
+            }
 
-            Text(
-                text = "${formatActivityDate(activity.date)} • ${activity.time}",
-                fontSize = 11.sp,
-                color = TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
             Text(
                 text = activity.name,
-                fontSize = 15.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
                 maxLines = 2,
@@ -449,7 +470,7 @@ private fun ActivityCard(
     if (showLeaveConfirm) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirm = false },
-            title = { Text("Leave activity?") },
+            title = { Text("Leave workout?") },
             text = { Text("You will no longer see this activity in your feed.") },
             confirmButton = {
                 TextButton(
@@ -458,7 +479,7 @@ private fun ActivityCard(
                         onLeaveActivity()
                     }
                 ) {
-                    Text("Leave")
+                    Text("Leave", color = Color(0xFFB24545), fontWeight = FontWeight.Medium)
                 }
             },
             dismissButton = {
@@ -502,13 +523,13 @@ private fun ActivityMembers(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
             participants.take(3).forEach { participant ->
                 UserAvatar(
                     name = participant.name,
-                    size = 20.dp,
+                    size = 24.dp,
                     userId = participant.userId,
                     profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
                     showShadow = false
@@ -516,17 +537,9 @@ private fun ActivityMembers(
             }
         }
         Text(
-            text = "with",
-            fontSize = 11.sp,
-            color = TextSecondary,
-            fontWeight = FontWeight.Normal
-        )
-        val displayNames = participants.take(2).map { it.name }.joinToString(", ")
-        Text(
-            text = if (participants.size > 2) "$displayNames, +${participants.size - 2} more" else displayNames,
-            fontSize = 11.sp,
+            text = buildParticipantDisplayAnnotated(participants),
+            fontSize = 13.sp,
             color = TextPrimary,
-            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -789,10 +802,16 @@ private fun EmojiReactionButton(
         modifier = Modifier
             .height(28.dp)
             .wrapContentWidth()
-            .border(1.dp, Color(0xFFD0D0D0), RoundedCornerShape(14.dp))
+            .border(
+                width = 1.dp,
+                color = if (isReacted) Indigo else Color(0xFFD0D0D0),
+                shape = RoundedCornerShape(14.dp)
+            )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isReacted) Indigo.copy(alpha = 0.14f) else Color.Transparent
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -828,18 +847,43 @@ private fun ActivityNotesBottomSheet(
     val hasSubmittedNote = !activity.participantNotes[currentUserId].isNullOrBlank()
     var noteDraft by remember(activity.activityId) { mutableStateOf("") }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFF6F8),
+                            Color(0xFFF2F6FF),
+                            Color(0xFFF7FFF4)
+                        )
+                    )
+                )
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(46.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color(0xFFD8D5E3))
+            )
+
             Text(
-                text = "Individual Notes",
+                text = "Notes",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
             activity.participants.forEach { participant ->
@@ -850,27 +894,56 @@ private fun ActivityNotesBottomSheet(
             }
 
             if (isParticipant && !hasSubmittedNote) {
-                OutlinedTextField(
-                    value = noteDraft,
-                    onValueChange = { noteDraft = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Add your note") },
-                    placeholder = { Text("Share your workout note") },
-                    minLines = 2,
-                    maxLines = 4
-                )
-                Button(
-                    onClick = {
-                        val trimmed = noteDraft.trim()
-                        if (trimmed.isNotEmpty()) {
-                            onSubmitNote(trimmed)
-                            noteDraft = ""
-                        }
-                    },
-                    enabled = noteDraft.trim().isNotEmpty(),
-                    modifier = Modifier.align(Alignment.End)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.82f))
+                        .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Send")
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (noteDraft.isBlank()) {
+                            Text(
+                                text = "Share your workout note",
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = noteDraft,
+                            onValueChange = { noteDraft = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = TextPrimary,
+                                fontSize = 14.sp
+                            ),
+                            singleLine = false,
+                            maxLines = 3
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(if (noteDraft.trim().isNotEmpty()) Indigo else Indigo.copy(alpha = 0.35f))
+                            .clickable(enabled = noteDraft.trim().isNotEmpty()) {
+                                val trimmed = noteDraft.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    onSubmitNote(trimmed)
+                                    noteDraft = ""
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send note",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 
@@ -942,4 +1015,40 @@ private fun ExpandedPhotoDialog(
 
 private fun formatNotesCount(count: Int): String {
     return if (count > 10) "10+" else count.toString()
+}
+
+private fun buildParticipantDisplayAnnotated(participants: List<ActivityParticipant>) = buildAnnotatedString {
+    val names = participants.take(3).map { it.name.trim() }.filter { it.isNotBlank() }
+
+    fun appendBoldName(name: String) {
+        pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold))
+        append(name)
+        pop()
+    }
+
+    when (names.size) {
+        0 -> Unit
+        1 -> {
+            appendBoldName(names[0])
+        }
+        2 -> {
+            appendBoldName(names[0])
+            append(" and ")
+            appendBoldName(names[1])
+        }
+        else -> {
+            appendBoldName(names[0])
+            append(", ")
+            appendBoldName(names[1])
+            val moreCount = participants.size - 3
+            if (moreCount > 0) {
+                append(", ")
+                appendBoldName(names[2])
+                append(" +$moreCount more")
+            } else {
+                append(", and ")
+                appendBoldName(names[2])
+            }
+        }
+    }
 }

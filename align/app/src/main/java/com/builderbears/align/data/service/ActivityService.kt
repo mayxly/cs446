@@ -119,7 +119,7 @@ class ActivityService {
     suspend fun addActivityPhoto(activityId: String, participantIds: List<String>, imageUri: Uri): Result<String> {
         return try {
             val path = StorageService.newActivityPhotoPath(activityId)
-            val url = StorageService.uploadImage(path, imageUri).getOrThrow()
+            val url = StorageService.uploadPhoto(path, imageUri).getOrThrow()
             val targets = participantIds.distinct().filter { it.isNotBlank() }
             targets.chunked(maxBatchWrites).forEach { chunk ->
                 val batch = db.batch()
@@ -133,6 +133,67 @@ class ActivityService {
                 batch.commit().await()
             }
             Result.success(url)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteActivityPhoto(activityId: String, participantIds: List<String>, photoUrl: String): Result<Unit> {
+        return try {
+            val targets = participantIds.distinct().filter { it.isNotBlank() }
+            if (targets.isEmpty()) return Result.success(Unit)
+
+            targets.chunked(maxBatchWrites).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { participantId ->
+                    batch.update(
+                        activityDocument(participantId, activityId),
+                        "imageUrls",
+                        FieldValue.arrayRemove(photoUrl)
+                    )
+                }
+                batch.commit().await()
+            }
+
+            StorageService.deleteFileByUrl(photoUrl)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addParticipantNote(
+        activityId: String,
+        participantIds: List<String>,
+        userId: String,
+        note: String
+    ): Result<Unit> {
+        return try {
+            if (userId.isBlank()) {
+                return Result.failure(IllegalArgumentException("Invalid user"))
+            }
+
+            val trimmedNote = note.trim()
+            if (trimmedNote.isEmpty()) {
+                return Result.failure(IllegalArgumentException("Note cannot be empty"))
+            }
+
+            val activity = getActivity(userId, activityId).getOrNull()
+                ?: return Result.failure(IllegalStateException("Activity not found"))
+
+            if (!activity.participantIds.contains(userId)) {
+                return Result.failure(IllegalStateException("Only participants can add notes"))
+            }
+
+            if (!activity.participantNotes[userId].isNullOrBlank()) {
+                return Result.failure(IllegalStateException("Note already submitted"))
+            }
+
+            updateActivity(
+                activityId = activityId,
+                participantIds = participantIds,
+                updates = mapOf("participantNotes.$userId" to trimmedNote)
+            )
         } catch (e: Exception) {
             Result.failure(e)
         }

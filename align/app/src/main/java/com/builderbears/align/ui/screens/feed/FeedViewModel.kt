@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ private const val TAG = "FeedViewModel"
 
 class FeedViewModel : ViewModel() {
     private val activityService = ActivityService()
+    private val userService = UserService()
     private val auth = FirebaseAuth.getInstance()
 
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
@@ -47,29 +49,44 @@ class FeedViewModel : ViewModel() {
             _error.value = null
             val userId = auth.currentUser?.uid
             if (userId != null) {
-                activityService.syncPostedStatusForUser(userId)
-                    .onFailure { exception ->
-                        Log.e(TAG, "Error syncing posted status: ${exception.message}", exception)
+                val visibleUserIds = userService.getAllUsers()
+                    .getOrDefault(emptyList())
+                    .map { it.userId }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .let { ids -> if (ids.contains(userId)) ids else ids + userId }
+
+                if (visibleUserIds.isEmpty()) {
+                    _activities.value = emptyList()
+                } else {
+                    visibleUserIds.forEach { visibleId ->
+                        activityService.syncPostedStatusForUser(visibleId)
+                            .onFailure { exception ->
+                                Log.e(TAG, "Error syncing posted status for $visibleId: ${exception.message}", exception)
+                            }
                     }
 
-                val result = activityService.getActivities(userId)
-                result.onSuccess { activities ->
-                    val postedActivities = activities
-                        .filter { it.isPosted }
+                    val byActivityId = linkedMapOf<String, Activity>()
+                    visibleUserIds.forEach { visibleId ->
+                        activityService.getActivities(visibleId)
+                            .onFailure { exception ->
+                                Log.e(TAG, "Error loading activities for $visibleId: ${exception.message}", exception)
+                            }
+                            .onSuccess { activities ->
+                                activities
+                                    .asSequence()
+                                    .filter { it.isPosted }
+                                    .forEach { activity ->
+                                        byActivityId[activity.activityId] = activity
+                                    }
+                            }
+                    }
+
+                    val postedActivities = byActivityId.values
                         .sortedByDescending { it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN }
 
                     _activities.value = postedActivities
                     Log.d(TAG, "Posted activities loaded successfully. Count: ${postedActivities.size}")
-                    postedActivities.forEach { activity ->
-                        Log.d(TAG, "Activity: name=${activity.name}, type=${activity.workoutType}, " +
-                            "location=${activity.location}, date=${activity.date}, time=${activity.time}, " +
-                            "participants=${activity.participants.size}, reactions=${activity.reactions.size}, " +
-                            "isPosted=${activity.isPosted}")
-                    }
-                }
-                result.onFailure { exception ->
-                    _error.value = exception.message
-                    Log.e(TAG, "Error loading activities: ${exception.message}", exception)
                 }
             } else {
                 Log.w(TAG, "User ID is null, cannot load activities")
@@ -103,6 +120,69 @@ class FeedViewModel : ViewModel() {
                     Log.e(TAG, "Failed to upload photo for activity $activityId", exception)
                 }
             _uploadingActivityIds.value = _uploadingActivityIds.value - activityId
+        }
+    }
+
+    fun deleteActivityPhoto(activityId: String, photoUrl: String) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            val activity = _activities.value.find { it.activityId == activityId } ?: return@launch
+            if (!activity.participantIds.contains(userId)) return@launch
+
+            activityService.deleteActivityPhoto(activityId, activity.participantIds, photoUrl)
+                .onSuccess {
+                    val updated = _activities.value.map { existing ->
+                        if (existing.activityId == activityId) {
+                            existing.copy(imageUrls = existing.imageUrls.filterNot { it == photoUrl })
+                        } else {
+                            existing
+                        }
+                    }
+                    _activities.value = updated
+                }
+                .onFailure { exception ->
+                    Log.e(TAG, "Failed to delete photo for activity $activityId", exception)
+                }
+        }
+    }
+
+    fun leaveActivity(activityId: String) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            activityService.leaveActivity(activityId, userId)
+                .onSuccess {
+                    _activities.value = _activities.value.filterNot { it.activityId == activityId }
+                }
+                .onFailure { exception ->
+                    Log.e(TAG, "Failed to leave activity $activityId", exception)
+                }
+        }
+    }
+
+    fun submitParticipantNote(activityId: String, note: String) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            val trimmedNote = note.trim()
+            if (trimmedNote.isEmpty()) return@launch
+
+            val activity = _activities.value.find { it.activityId == activityId } ?: return@launch
+            if (!activity.participantIds.contains(userId)) return@launch
+            if (!activity.participantNotes[userId].isNullOrBlank()) return@launch
+
+            activityService.addParticipantNote(activityId, activity.participantIds, userId, trimmedNote)
+                .onSuccess {
+                    val updated = _activities.value.map { existing ->
+                        if (existing.activityId == activityId) {
+                            existing.copy(participantNotes = existing.participantNotes + (userId to trimmedNote))
+                        } else {
+                            existing
+                        }
+                    }
+                    _activities.value = updated
+                }
+                .onFailure { exception ->
+                    Log.e(TAG, "Failed to submit note for activity $activityId", exception)
+                }
         }
     }
 

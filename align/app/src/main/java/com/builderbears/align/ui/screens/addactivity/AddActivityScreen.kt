@@ -1254,7 +1254,7 @@ private fun TimePickerWheel(
     modifier: Modifier = Modifier
 ) {
     val hours = (1..12).toList()
-    val minutes = listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+    val minutes = (0..59).toList()
 
     Card(
         modifier = modifier.fillMaxWidth(),
