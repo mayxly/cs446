@@ -44,6 +44,9 @@ class YouViewModel : ViewModel() {
     private val _topActivity = MutableStateFlow<String?>(null)
     val topActivity: StateFlow<String?> = _topActivity
 
+    private val _pushNotificationsEnabled = MutableStateFlow(false)
+    val pushNotificationsEnabled: StateFlow<Boolean> = _pushNotificationsEnabled
+
     init {
         loadUserData()
     }
@@ -55,6 +58,7 @@ class YouViewModel : ViewModel() {
                 .onSuccess { user ->
                     _user.value = user
                     _profilePhotoUrl.value = user?.profilePhotoUrl?.takeIf { it.isNotBlank() }
+                    _pushNotificationsEnabled.value = user?.pushNotificationsEnabled ?: false
                 }
             loadActivityCounts(userId)
         }
@@ -133,6 +137,14 @@ class YouViewModel : ViewModel() {
             "basketball" -> "Basketball"
             "hiit" -> "HIIT"
             else -> workoutType.replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    fun setPushNotificationsEnabled(enabled: Boolean) {
+        val userId = auth.currentUser?.uid ?: return
+        _pushNotificationsEnabled.value = enabled
+        viewModelScope.launch {
+            userService.updateUser(userId, mapOf("pushNotificationsEnabled" to enabled))
         }
     }
 

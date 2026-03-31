@@ -141,6 +141,7 @@ fun YouScreen(
     val thisMonthWorkouts by viewModel.thisMonthWorkouts.collectAsState()
     val weeklyMinutes by viewModel.weeklyMinutes.collectAsState()
     val topActivity by viewModel.topActivity.collectAsState()
+    val pushNotificationsEnabled by viewModel.pushNotificationsEnabled.collectAsState()
 
     // Local UI state
     var name by remember(user) { mutableStateOf(user?.name ?: "Your Name") }
@@ -149,14 +150,13 @@ fun YouScreen(
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var pushNotificationsEnabled by remember { mutableStateOf(true) }
     var showInbox by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        pushNotificationsEnabled = granted
+        viewModel.setPushNotificationsEnabled(granted)
     }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -562,7 +562,7 @@ fun YouScreen(
                             if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             } else {
-                                pushNotificationsEnabled = enabled
+                                viewModel.setPushNotificationsEnabled(enabled)
                             }
                         },
                         colors = SwitchDefaults.colors(
