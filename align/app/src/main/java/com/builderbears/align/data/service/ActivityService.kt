@@ -5,10 +5,17 @@ import com.builderbears.align.data.model.ActivityParticipant
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class ActivityService {
     private val db = FirebaseFirestore.getInstance()
     private val maxBatchWrites = 400
+    private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
 
     private fun activitiesCollection(userId: String) =
         db.collection("users").document(userId).collection("activities")
@@ -61,6 +68,47 @@ class ActivityService {
         return try {
             val snapshot = activitiesCollection(userId).document(activityId).get().await()
             Result.success(snapshot.toObject(Activity::class.java))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun syncPostedStatusForUser(userId: String): Result<Unit> {
+        return try {
+            if (userId.isBlank()) return Result.success(Unit)
+
+            val snapshot = activitiesCollection(userId).get().await()
+            val now = LocalDateTime.now()
+
+            val pendingWrites = snapshot.documents.mapNotNull { document ->
+                val activity = document.toObject(Activity::class.java) ?: return@mapNotNull null
+                if (activity.activityId.isBlank() || activity.participantIds.isEmpty()) return@mapNotNull null
+
+                val dueByTime = activity.scheduledDateTimeOrNull()?.let { !it.isAfter(now) } == true
+                val shouldBePosted = activity.isPosted || dueByTime
+
+                val needsUpdate = shouldBePosted != activity.isPosted
+                if (!needsUpdate) return@mapNotNull null
+
+                val updates = mapOf<String, Any>(
+                    "isPosted" to shouldBePosted
+                )
+
+                activity.activityId to (activity.participantIds.distinct().filter { it.isNotBlank() } to updates)
+            }
+
+            pendingWrites.chunked(maxBatchWrites).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { (activityId, payload) ->
+                    val (participantIds, updates) = payload
+                    participantIds.forEach { participantId ->
+                        batch.set(activityDocument(participantId, activityId), updates, SetOptions.merge())
+                    }
+                }
+                batch.commit().await()
+            }
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -202,5 +250,12 @@ class ActivityService {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun Activity.scheduledDateTimeOrNull(): LocalDateTime? {
+        val parsedDate = runCatching { LocalDate.parse(date, dateFormatter) }.getOrNull() ?: return null
+        val parsedTime = runCatching { LocalTime.parse(time.trim().uppercase(Locale.US), timeFormatter) }.getOrNull()
+            ?: return null
+        return LocalDateTime.of(parsedDate, parsedTime)
     }
 }

@@ -9,6 +9,11 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private const val TAG = "FeedViewModel"
 
@@ -25,6 +30,9 @@ class FeedViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+
     init {
         loadActivities()
     }
@@ -35,15 +43,24 @@ class FeedViewModel : ViewModel() {
             _error.value = null
             val userId = auth.currentUser?.uid
             if (userId != null) {
+                activityService.syncPostedStatusForUser(userId)
+                    .onFailure { exception ->
+                        Log.e(TAG, "Error syncing posted status: ${exception.message}", exception)
+                    }
+
                 val result = activityService.getActivities(userId)
                 result.onSuccess { activities ->
-                    val sortedActivities = activities.sortedByDescending { it.date }
-                    _activities.value = sortedActivities
-                    Log.d(TAG, "Activities loaded successfully. Count: ${sortedActivities.size}")
-                    sortedActivities.forEach { activity ->
+                    val postedActivities = activities
+                        .filter { it.isPosted }
+                        .sortedByDescending { it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN }
+
+                    _activities.value = postedActivities
+                    Log.d(TAG, "Posted activities loaded successfully. Count: ${postedActivities.size}")
+                    postedActivities.forEach { activity ->
                         Log.d(TAG, "Activity: name=${activity.name}, type=${activity.workoutType}, " +
                             "location=${activity.location}, date=${activity.date}, time=${activity.time}, " +
-                            "participants=${activity.participants.size}, reactions=${activity.reactions.size}")
+                            "participants=${activity.participants.size}, reactions=${activity.reactions.size}, " +
+                            "isPosted=${activity.isPosted}")
                     }
                 }
                 result.onFailure { exception ->
@@ -76,7 +93,9 @@ class FeedViewModel : ViewModel() {
                     reactions[emoji] = userList
                     val updatedActivity = activity.copy(reactions = reactions)
                     currentActivities[index] = updatedActivity
-                    _activities.value = currentActivities.sortedByDescending { it.date }
+                    _activities.value = currentActivities.sortedByDescending {
+                        it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN
+                    }
                     activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
                 }
             }
@@ -100,9 +119,19 @@ class FeedViewModel : ViewModel() {
                 }
                 val updatedActivity = activity.copy(reactions = reactions)
                 currentActivities[index] = updatedActivity
-                _activities.value = currentActivities.sortedByDescending { it.date }
+                _activities.value = currentActivities.sortedByDescending {
+                    it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN
+                }
                 activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
             }
         }
     }
+
+    private fun Activity.scheduledDateTimeOrNull(): LocalDateTime? {
+        val parsedDate = runCatching { LocalDate.parse(date, dateFormatter) }.getOrNull() ?: return null
+        val parsedTime = runCatching { LocalTime.parse(time.trim().uppercase(Locale.US), timeFormatter) }.getOrNull()
+            ?: return null
+        return LocalDateTime.of(parsedDate, parsedTime)
+    }
+
 }

@@ -21,6 +21,7 @@ data class Activity (
     val time: String = "",
     val participantIds: List<String> = emptyList(),
     val participants: List<ActivityParticipant> = emptyList(),
+    val isPosted: Boolean = false,
     val imageUrl: String? = null,
     val reactions: Map<String, List<String>> = emptyMap()
 )

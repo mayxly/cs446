@@ -1,9 +1,6 @@
 package com.builderbears.align.ui.screens.feed
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,29 +13,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,15 +35,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.ui.components.InboxScreen
-import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
@@ -70,10 +56,9 @@ import com.builderbears.align.ui.theme.TextSecondary
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.ui.text.style.TextAlign
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @Composable
 fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
@@ -81,11 +66,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    var showEditModal by remember { mutableStateOf(false) }
-    var selectedActivity by remember { mutableStateOf<Activity?>(null) }
     var showInbox by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
 
     // Refresh on screen appear
     DisposableEffect(Unit) {
@@ -213,26 +194,12 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                                 } else {
                                     viewModel.addReaction(activity.activityId, emoji)
                                 }
-                            },
-                            onCardClick = {
-                                selectedActivity = activity
-                                showEditModal = true
                             }
                         )
                     }
                 }
             }
         }
-    }
-
-    if (showEditModal && selectedActivity != null) {
-        EditActivityModal(
-            activity = selectedActivity!!,
-            onDismiss = {
-                showEditModal = false
-                selectedActivity = null
-            }
-        )
     }
 
     if (showInbox) {
@@ -245,52 +212,36 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
 @Composable
 private fun ActivityCard(
     activity: Activity,
-    onReactionClick: (String) -> Unit,
-    onCardClick: () -> Unit
+    onReactionClick: (String) -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onCardClick),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: Profile photo, user info, activity type pill
+            // Top row: participants and workout type
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Profile photo with border
-                UserAvatar(
-                    name = activity.primaryParticipantName(),
-                    size = 40.dp,
-                    userId = activity.primaryParticipantId(),
-                    profilePhotoUrl = activity.primaryParticipantPhotoUrl()
-                )
-
-                // User name and date/time
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = activity.primaryParticipantName(),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                if (activity.participants.isNotEmpty()) {
+                    ActivityMembers(
+                        participants = activity.participants,
+                        modifier = Modifier.weight(1f)
                     )
+                } else {
                     Text(
-                        text = "${formatActivityDate(activity.date)} • ${activity.time}",
-                        fontSize = 11.sp,
+                        text = "Shared workout",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                         color = TextSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Activity type pill
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
@@ -316,17 +267,18 @@ private fun ActivityCard(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
 
-            // Members
-            if (activity.participants.isNotEmpty()) {
-                ActivityMembers(
-                    participants = activity.participants,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            Text(
+                text = "${formatActivityDate(activity.date)} • ${activity.time}",
+                fontSize = 11.sp,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-            // Activity name
+            Spacer(Modifier.height(8.dp))
+
             Text(
                 text = activity.name,
                 fontSize = 15.sp,
@@ -336,7 +288,6 @@ private fun ActivityCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Activity image
             if (!activity.imageUrl.isNullOrEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 Box(
@@ -358,7 +309,6 @@ private fun ActivityCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Reactions bar
             EmojiReactionBar(
                 reactions = activity.reactions,
                 defaultReactions = defaultReactions,
@@ -380,7 +330,6 @@ private fun ActivityMembers(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Member pfps
         Box {
             Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
                 participants.forEach { participant ->
@@ -402,7 +351,6 @@ private fun ActivityMembers(
             fontWeight = FontWeight.Normal
         )
 
-        // Names list
         val displayNames = participants.take(2)
             .map { it.name }
             .joinToString(", ")
@@ -417,18 +365,6 @@ private fun ActivityMembers(
             modifier = Modifier.weight(1f)
         )
     }
-}
-
-private fun Activity.primaryParticipantName(): String {
-    return participants.firstOrNull()?.name ?: "Workout"
-}
-
-private fun Activity.primaryParticipantId(): String {
-    return participants.firstOrNull()?.userId ?: ""
-}
-
-private fun Activity.primaryParticipantPhotoUrl(): String? {
-    return participants.firstOrNull()?.profilePhotoUrl?.takeIf { it.isNotBlank() }
 }
 
 @Composable
@@ -495,112 +431,6 @@ private fun EmojiReactionButton(
                     fontWeight = FontWeight.SemiBold,
                     color = textColor
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditActivityModal(
-    activity: Activity,
-    onDismiss: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .background(CardWhite, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CardWhite),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Edit Activity",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            tint = TextMuted
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                // Activity info display
-                Text(
-                    text = "Activity: ${activity.name}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Location: ${activity.location}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Type: ${activity.workoutType}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Date: ${activity.date} at ${activity.time}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Text(
-                    text = "TODO: Activity Editing",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
-                )
-
-                Spacer(Modifier.height(24.dp))
-
-                // Close button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Indigo)
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Done",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
             }
         }
     }

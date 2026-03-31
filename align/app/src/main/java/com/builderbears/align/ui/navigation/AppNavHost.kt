@@ -1,5 +1,6 @@
 package com.builderbears.align.ui.navigation
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.*
+import com.builderbears.align.data.service.ActivityService
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.screens.feed.FeedScreen
 import com.builderbears.align.ui.screens.forgotpassword.ForgotPasswordScreen
@@ -40,6 +42,8 @@ import com.builderbears.align.ui.theme.NavBarSelected
 import com.builderbears.align.ui.theme.NavBarUnselected
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
+
+private const val TAG = "AlignApp"
 
 private enum class AppState {
     LOADING,
@@ -66,6 +70,7 @@ fun AlignApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val activityService = remember { ActivityService() }
 
     var appState by remember { mutableStateOf(AppState.LOADING) }
 
@@ -77,6 +82,16 @@ fun AlignApp() {
         } else {
             AppState.LOGIN
         }
+    }
+
+    LaunchedEffect(appState) {
+        if (appState != AppState.MAIN) return@LaunchedEffect
+
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        activityService.syncPostedStatusForUser(userId)
+            .onFailure { exception ->
+                Log.e(TAG, "Failed to sync posted status at app launch", exception)
+            }
     }
 
     when (appState) {
