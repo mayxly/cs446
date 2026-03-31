@@ -1,5 +1,8 @@
 package com.builderbears.align.ui.screens.feed
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,39 +10,72 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.data.model.ActivityParticipant
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.components.UserAvatar
@@ -53,20 +89,31 @@ import com.builderbears.align.ui.theme.Indigo
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
     val activities by viewModel.activities.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val uploadingActivityIds by viewModel.uploadingActivityIds.collectAsState()
 
+    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     var showInbox by remember { mutableStateOf(false) }
+    var pendingUploadActivityId by remember { mutableStateOf<String?>(null) }
+    var expandedPhotoUrl by remember { mutableStateOf<String?>(null) }
+    var notesSheetActivityId by remember { mutableStateOf<String?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        val activityId = pendingUploadActivityId
+        if (uri != null && activityId != null) {
+            viewModel.uploadActivityPhoto(activityId, uri)
+        }
+        pendingUploadActivityId = null
+    }
 
     // Refresh on screen appear
     DisposableEffect(Unit) {
@@ -116,7 +163,6 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                 )
             }
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,7 +179,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
             NotificationButton(onClick = { showInbox = true })
         }
 
-        HorizontalDivider(color = BorderLight, thickness = 1.dp, modifier = Modifier.padding(horizontal = 0.dp))
+        HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
         Spacer(Modifier.height(8.dp))
 
@@ -146,7 +192,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Error: ${error}",
+                        text = "Error: $error",
                         color = TextSecondary,
                         textAlign = TextAlign.Center
                     )
@@ -182,24 +228,64 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(activities) { activity ->
+                    items(activities, key = { it.activityId }) { activity ->
                         ActivityCard(
                             activity = activity,
+                            currentUserId = currentUserId,
+                            isUploading = activity.activityId in uploadingActivityIds,
                             onReactionClick = { emoji ->
-                                val hasReacted = activity.reactions[emoji]?.contains(
-                                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                ) == true
+                                val hasReacted = activity.reactions[emoji]?.contains(currentUserId) == true
                                 if (hasReacted) {
                                     viewModel.removeReaction(activity.activityId, emoji)
                                 } else {
                                     viewModel.addReaction(activity.activityId, emoji)
                                 }
+                            },
+                            onAddPhotoClick = {
+                                pendingUploadActivityId = activity.activityId
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            onExpandPhoto = { expandedPhotoUrl = it },
+                            onDeletePhoto = { photoUrl ->
+                                viewModel.deleteActivityPhoto(activity.activityId, photoUrl)
+                            },
+                            onLeaveActivity = {
+                                viewModel.leaveActivity(activity.activityId)
+                            },
+                            onOpenNotes = {
+                                notesSheetActivityId = activity.activityId
+                            },
+                            onSubmitNote = { note ->
+                                viewModel.submitParticipantNote(activity.activityId, note)
                             }
                         )
                     }
                 }
             }
         }
+    }
+
+    val notesActivity = notesSheetActivityId?.let { selectedId ->
+        activities.firstOrNull { it.activityId == selectedId }
+    }
+    if (notesActivity != null) {
+        ActivityNotesBottomSheet(
+            activity = notesActivity,
+            currentUserId = currentUserId,
+            onDismiss = { notesSheetActivityId = null },
+            onSubmitNote = { note ->
+                viewModel.submitParticipantNote(notesActivity.activityId, note)
+            }
+        )
+    }
+
+    expandedPhotoUrl?.let { photoUrl ->
+        ExpandedPhotoDialog(
+            photoUrl = photoUrl,
+            onDismiss = { expandedPhotoUrl = null }
+        )
     }
 
     if (showInbox) {
@@ -212,8 +298,23 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
 @Composable
 private fun ActivityCard(
     activity: Activity,
-    onReactionClick: (String) -> Unit
+    currentUserId: String,
+    isUploading: Boolean,
+    onReactionClick: (String) -> Unit,
+    onAddPhotoClick: () -> Unit,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhoto: (String) -> Unit,
+    onLeaveActivity: () -> Unit,
+    onOpenNotes: () -> Unit,
+    onSubmitNote: (String) -> Unit
 ) {
+    var showLeaveMenu by remember { mutableStateOf(false) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
+    var pendingDeletePhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    val isParticipant = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
+    val noteCount = activity.participantNotes.values.count { it.isNotBlank() }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -221,11 +322,10 @@ private fun ActivityCard(
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: participants and workout type
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 if (activity.participants.isNotEmpty()) {
                     ActivityMembers(
@@ -242,27 +342,56 @@ private fun ActivityCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Column(horizontalAlignment = Alignment.End) {
+                    if (isParticipant) {
+                        Box {
+                            IconButton(
+                                onClick = { showLeaveMenu = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.MoreVert,
+                                    contentDescription = "Activity actions",
+                                    tint = TextSecondary
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showLeaveMenu,
+                                onDismissRequest = { showLeaveMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Leave activity") },
+                                    onClick = {
+                                        showLeaveMenu = false
+                                        showLeaveConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF0F0F0))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = activity.getWorkoutEmoji(),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = activity.workoutType,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = activity.getWorkoutEmoji(),
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = activity.workoutType,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -288,24 +417,14 @@ private fun ActivityCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            if (!activity.imageUrl.isNullOrEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Placeholder
-                    Text(
-                        text = "[Image]",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                }
-            }
+            ActivityPhotoSection(
+                imageUrls = activity.imageUrls,
+                isParticipant = isParticipant,
+                isUploading = isUploading,
+                onAddPhotoClick = onAddPhotoClick,
+                onExpandPhoto = onExpandPhoto,
+                onDeletePhotoRequest = { photoUrl -> pendingDeletePhotoUrl = photoUrl }
+            )
 
             Spacer(Modifier.height(12.dp))
 
@@ -314,47 +433,95 @@ private fun ActivityCard(
                 defaultReactions = defaultReactions,
                 onReactionClick = onReactionClick
             )
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = "Notes (${formatNotesCount(noteCount)})",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Indigo,
+                modifier = Modifier.clickable(onClick = onOpenNotes)
+            )
         }
+    }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text("Leave activity?") },
+            text = { Text("You will no longer see this activity in your feed.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLeaveConfirm = false
+                        onLeaveActivity()
+                    }
+                ) {
+                    Text("Leave")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    pendingDeletePhotoUrl?.let { photoUrl ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletePhotoUrl = null },
+            title = { Text("Delete photo?") },
+            text = { Text("This will remove the photo for all participants in this activity.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeletePhotoUrl = null
+                        onDeletePhoto(photoUrl)
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeletePhotoUrl = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
 @Composable
 private fun ActivityMembers(
-    participants: List<com.builderbears.align.data.model.ActivityParticipant>,
+    participants: List<ActivityParticipant>,
     modifier: Modifier = Modifier
 ) {
     if (participants.isEmpty()) return
-
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Box {
-            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                participants.forEach { participant ->
-                    UserAvatar(
-                        name = participant.name,
-                        size = 20.dp,
-                        userId = participant.userId,
-                        profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
-                        showShadow = false
-                    )
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+            participants.take(3).forEach { participant ->
+                UserAvatar(
+                    name = participant.name,
+                    size = 20.dp,
+                    userId = participant.userId,
+                    profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
+                    showShadow = false
+                )
             }
         }
-
         Text(
             text = "with",
             fontSize = 11.sp,
             color = TextSecondary,
             fontWeight = FontWeight.Normal
         )
-
-        val displayNames = participants.take(2)
-            .map { it.name }
-            .joinToString(", ")
-
+        val displayNames = participants.take(2).map { it.name }.joinToString(", ")
         Text(
             text = if (participants.size > 2) "$displayNames, +${participants.size - 2} more" else displayNames,
             fontSize = 11.sp,
@@ -368,12 +535,225 @@ private fun ActivityMembers(
 }
 
 @Composable
+private fun ActivityPhotoSection(
+    imageUrls: List<String>,
+    isParticipant: Boolean,
+    isUploading: Boolean,
+    onAddPhotoClick: () -> Unit,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhotoRequest: (String) -> Unit
+) {
+    if (imageUrls.isEmpty() && !isParticipant) return
+
+    Spacer(Modifier.height(8.dp))
+
+    if (imageUrls.isEmpty()) {
+        if (isUploading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF0EEFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Indigo, modifier = Modifier.size(28.dp))
+            }
+        } else {
+            AddPhotoZone(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                onClick = onAddPhotoClick
+            )
+        }
+        return
+    }
+
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(imageUrls, key = { it }) { url ->
+            ActivityPhotoTile(
+                photoUrl = url,
+                canDelete = isParticipant,
+                onExpandPhoto = onExpandPhoto,
+                onDeletePhotoRequest = onDeletePhotoRequest
+            )
+        }
+        if (isParticipant) {
+            item {
+                if (isUploading) {
+                    Box(
+                        modifier = Modifier
+                            .height(160.dp)
+                            .width(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF0EEFF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Indigo, modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .height(160.dp)
+                            .width(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF0EEFF))
+                            .clickable(onClick = onAddPhotoClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.CameraAlt,
+                            contentDescription = "Add photo",
+                            tint = Indigo,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityPhotoTile(
+    photoUrl: String,
+    canDelete: Boolean,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhotoRequest: (String) -> Unit
+) {
+    var showOverlay by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .height(160.dp)
+            .width(200.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { showOverlay = !showOverlay }
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(photoUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (showOverlay) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .clickable { showOverlay = false }
+            )
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PhotoOverlayIconButton(
+                    icon = Icons.Outlined.OpenInFull,
+                    contentDescription = "Expand photo",
+                    onClick = {
+                        showOverlay = false
+                        onExpandPhoto(photoUrl)
+                    }
+                )
+                PhotoOverlayIconButton(
+                    icon = Icons.Outlined.Delete,
+                    contentDescription = "Delete photo",
+                    enabled = canDelete,
+                    onClick = {
+                        showOverlay = false
+                        if (canDelete) {
+                            onDeletePhotoRequest(photoUrl)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoOverlayIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = if (enabled) 0.95f else 0.45f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) TextPrimary else TextMuted,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun AddPhotoZone(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF0EEFF))
+            .drawBehind {
+                drawRoundRect(
+                    color = Color(0xFF6B7FD4).copy(alpha = 0.5f),
+                    style = Stroke(
+                        width = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+                    ),
+                    cornerRadius = CornerRadius(12.dp.toPx())
+                )
+            }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Outlined.CameraAlt,
+                contentDescription = "Add a photo",
+                tint = Indigo,
+                modifier = Modifier.size(32.dp)
+            )
+            Text(
+                text = "Add a photo",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Indigo
+            )
+            Text(
+                text = "Tap to upload from your library",
+                fontSize = 11.sp,
+                color = TextMuted
+            )
+        }
+    }
+}
+
+@Composable
 private fun EmojiReactionBar(
     reactions: Map<String, List<String>>,
     defaultReactions: List<String>,
     onReactionClick: (String) -> Unit
 ) {
-    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -434,4 +814,132 @@ private fun EmojiReactionButton(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivityNotesBottomSheet(
+    activity: Activity,
+    currentUserId: String,
+    onDismiss: () -> Unit,
+    onSubmitNote: (String) -> Unit
+) {
+    val isParticipant = activity.participantIds.contains(currentUserId)
+    val hasSubmittedNote = !activity.participantNotes[currentUserId].isNullOrBlank()
+    var noteDraft by remember(activity.activityId) { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Individual Notes",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+
+            activity.participants.forEach { participant ->
+                ParticipantNoteRow(
+                    participant = participant,
+                    note = activity.participantNotes[participant.userId].orEmpty()
+                )
+            }
+
+            if (isParticipant && !hasSubmittedNote) {
+                OutlinedTextField(
+                    value = noteDraft,
+                    onValueChange = { noteDraft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Add your note") },
+                    placeholder = { Text("Share your workout note") },
+                    minLines = 2,
+                    maxLines = 4
+                )
+                Button(
+                    onClick = {
+                        val trimmed = noteDraft.trim()
+                        if (trimmed.isNotEmpty()) {
+                            onSubmitNote(trimmed)
+                            noteDraft = ""
+                        }
+                    },
+                    enabled = noteDraft.trim().isNotEmpty(),
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Send")
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun ParticipantNoteRow(
+    participant: ActivityParticipant,
+    note: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        UserAvatar(
+            name = participant.name,
+            size = 24.dp,
+            userId = participant.userId,
+            profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
+            showShadow = false
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = participant.name,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            Text(
+                text = note.ifBlank { "No note yet" },
+                fontSize = 14.sp,
+                color = if (note.isBlank()) TextMuted else TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpandedPhotoDialog(
+    photoUrl: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.9f))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+        }
+    }
+}
+
+private fun formatNotesCount(count: Int): String {
+    return if (count > 10) "10+" else count.toString()
 }

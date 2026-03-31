@@ -1,5 +1,6 @@
 package com.builderbears.align.ui.screens.feed
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,6 +30,9 @@ class FeedViewModel : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    private val _uploadingActivityIds = MutableStateFlow<Set<String>>(emptySet())
+    val uploadingActivityIds: StateFlow<Set<String>> = _uploadingActivityIds
 
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
@@ -77,6 +81,29 @@ class FeedViewModel : ViewModel() {
 
     fun refreshActivities() {
         loadActivities()
+    }
+
+    fun uploadActivityPhoto(activityId: String, imageUri: Uri) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            val activity = _activities.value.find { it.activityId == activityId } ?: return@launch
+            if (!activity.participantIds.contains(userId)) return@launch
+
+            _uploadingActivityIds.value = _uploadingActivityIds.value + activityId
+            activityService.addActivityPhoto(activityId, activity.participantIds, imageUri)
+                .onSuccess { url ->
+                    val list = _activities.value.toMutableList()
+                    val idx = list.indexOfFirst { it.activityId == activityId }
+                    if (idx != -1) {
+                        list[idx] = list[idx].copy(imageUrls = list[idx].imageUrls + url)
+                        _activities.value = list
+                    }
+                }
+                .onFailure { exception ->
+                    Log.e(TAG, "Failed to upload photo for activity $activityId", exception)
+                }
+            _uploadingActivityIds.value = _uploadingActivityIds.value - activityId
+        }
     }
 
     fun addReaction(activityId: String, emoji: String) {

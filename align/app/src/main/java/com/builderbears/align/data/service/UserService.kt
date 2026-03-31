@@ -4,7 +4,6 @@ import android.net.Uri
 import com.builderbears.align.data.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 class UserService {
@@ -128,18 +127,12 @@ class UserService {
         }
     }
 
-    suspend fun uploadProfilePhoto(userId: String, imageUri: Uri): Result<String> {
-        return try {
-            val storageRef = FirebaseStorage.getInstance().reference
-            val photoRef = storageRef.child("profile_photos/$userId.jpg")
-            photoRef.putFile(imageUri).await()
-            val downloadUrl = photoRef.downloadUrl.await().toString()
-            usersCollection.document(userId).update("profilePhotoUrl", downloadUrl).await()
-            Result.success(downloadUrl)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    suspend fun uploadProfilePhoto(userId: String, imageUri: Uri): Result<String> =
+        StorageService.uploadImage(StorageService.profilePhotoPath(userId), imageUri)
+            .mapCatching { downloadUrl ->
+                usersCollection.document(userId).update("profilePhotoUrl", downloadUrl).await()
+                downloadUrl
+            }
 
     suspend fun updateUser(userId: String, updates: Map<String, Any>): Result<Unit> {
         return try {

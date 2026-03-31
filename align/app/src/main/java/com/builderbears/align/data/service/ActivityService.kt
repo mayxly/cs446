@@ -1,7 +1,9 @@
 package com.builderbears.align.data.service
 
+import android.net.Uri
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.model.ActivityParticipant
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -109,6 +111,28 @@ class ActivityService {
             }
 
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addActivityPhoto(activityId: String, participantIds: List<String>, imageUri: Uri): Result<String> {
+        return try {
+            val path = StorageService.newActivityPhotoPath(activityId)
+            val url = StorageService.uploadImage(path, imageUri).getOrThrow()
+            val targets = participantIds.distinct().filter { it.isNotBlank() }
+            targets.chunked(maxBatchWrites).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { participantId ->
+                    batch.update(
+                        activityDocument(participantId, activityId),
+                        "imageUrls",
+                        FieldValue.arrayUnion(url)
+                    )
+                }
+                batch.commit().await()
+            }
+            Result.success(url)
         } catch (e: Exception) {
             Result.failure(e)
         }

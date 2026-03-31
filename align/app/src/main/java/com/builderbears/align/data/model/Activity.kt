@@ -1,5 +1,7 @@
 package com.builderbears.align.data.model
 
+import com.google.firebase.firestore.PropertyName
+
 data class ActivityParticipant(
     val userId: String = "",
     val name: String = "",
@@ -21,7 +23,9 @@ data class Activity (
     val time: String = "",
     val participantIds: List<String> = emptyList(),
     val participants: List<ActivityParticipant> = emptyList(),
-    val isPosted: Boolean = false,
-    val imageUrl: String? = null,
+    @get:PropertyName("isPosted")
+    @set:PropertyName("isPosted")
+    var isPosted: Boolean = false,
+    val imageUrls: List<String> = emptyList(),
     val reactions: Map<String, List<String>> = emptyMap()
 )
