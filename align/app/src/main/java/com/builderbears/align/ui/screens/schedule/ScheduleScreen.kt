@@ -62,6 +62,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationCountBadge
 import com.builderbears.align.data.model.Attendee
 import com.builderbears.align.data.model.MonthGroup
@@ -633,23 +634,16 @@ private fun EventAttendeesSummary(attendees: List<Attendee>, modifier: Modifier 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Box(modifier = Modifier.height(20.dp)) {
+        Box {
             Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
                 attendees.forEach { attendee ->
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(attendee.color),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = attendee.initials,
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
+                    UserAvatar(
+                        name = attendee.name,
+                        size = 20.dp,
+                        userId = attendee.userId,
+                        profilePhotoUrl = attendee.profilePhotoUrl.takeIf { it.isNotBlank() },
+                        showShadow = false
+                    )
                 }
             }
         }

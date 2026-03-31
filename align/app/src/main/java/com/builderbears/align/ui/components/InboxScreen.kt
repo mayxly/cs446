@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.theme.AvatarOrange
 import com.builderbears.align.ui.theme.AvatarPink
 import com.builderbears.align.ui.theme.AvatarYellow
@@ -236,21 +237,10 @@ private fun NotificationItem(
         ) {
             // Pfp with initials
             if (notification.userInitials.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(notification.avatarColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = notification.userInitials,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                UserAvatar(
+                    name = notification.userInitials,
+                    size = 40.dp
+                )
             } else {
                 Box(
                     modifier = Modifier

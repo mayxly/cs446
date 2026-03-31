@@ -80,6 +80,7 @@ import com.builderbears.align.ui.theme.AvatarOrange
 import com.builderbears.align.ui.theme.AvatarPink
 import com.builderbears.align.ui.theme.AvatarYellow
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -277,33 +278,13 @@ fun YouScreen(
                                     strokeWidth = 2.dp
                                 )
                             }
-                        } else if (!profilePhotoUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(profilePhotoUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Profile photo",
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
                         } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(AvatarGreen),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = name.firstOrNull()?.uppercase() ?: "Y",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary.copy(alpha = 0.6f)
-                                )
-                            }
+                            UserAvatar(
+                                name = name,
+                                size = 64.dp,
+                                userId = user?.userId ?: "",
+                                profilePhotoUrl = profilePhotoUrl
+                            )
                         }
                         // Camera icon overlay
                         Box(
@@ -760,20 +741,10 @@ private fun StatsRow() {
                 verticalArrangement = Arrangement.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(AvatarPink),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "S",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
+                    UserAvatar(
+                        name = "Sam Reyes",
+                        size = 28.dp
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Sam Reyes",
@@ -892,20 +863,10 @@ private fun FriendsCard() {
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(friend.color),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = friend.initial,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    }
+                    UserAvatar(
+                        name = friend.name,
+                        size = 40.dp
+                    )
 
                     Spacer(Modifier.width(12.dp))
 

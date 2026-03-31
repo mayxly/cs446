@@ -23,9 +23,9 @@ data class WorkoutEvent(
 )
 
 data class Attendee(
-    val initials: String,
     val name: String,
-    val color: Color
+    val userId: String = "",
+    val profilePhotoUrl: String = ""
 )
 
 data class ScheduledDay(
