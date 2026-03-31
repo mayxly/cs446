@@ -53,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,15 +72,27 @@ import com.builderbears.align.data.model.WorkoutEvent
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.BorderMuted
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.Caption
+import com.builderbears.align.ui.theme.DestructiveAction
+import com.builderbears.align.ui.theme.DestructiveText
+import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.HeadingStyle2
+import com.builderbears.align.ui.theme.HeadingStyle3
 import com.builderbears.align.ui.theme.InputBackground
+import com.builderbears.align.ui.theme.LabelLarge
+import com.builderbears.align.ui.theme.LabelMedium
+import com.builderbears.align.ui.theme.LabelSmall
+import com.builderbears.align.ui.theme.NeutralActionBackground
+import com.builderbears.align.ui.theme.NeutralActionText
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
 import com.builderbears.align.ui.theme.TextMuted
+import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
 
 
 @Composable
@@ -144,9 +157,7 @@ fun ScheduleScreen(
         ) {
             Text(
                 text = "Upcoming",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
             )
             Box {
                 Surface(
@@ -301,10 +312,11 @@ private fun LeaveWorkoutConfirmationDialog(
             ) {
                 Text(
                     text = "Are you sure you want to leave the\nworkout?",
-                    color = TextPrimary,
-                    fontSize = 17.sp,
-                    lineHeight = 23.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = HeadingStyle2.copy(
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        lineHeight = 23.sp
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -318,18 +330,18 @@ private fun LeaveWorkoutConfirmationDialog(
                         onClick = onConfirm,
                         enabled = !isLoading,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF25555))
+                        colors = ButtonDefaults.buttonColors(containerColor = DestructiveAction)
                     ) {
-                        Text("Leave", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text("Leave", color = CardWhite, fontWeight = FontWeight.SemiBold)
                     }
 
                     Button(
                         onClick = onDismiss,
                         enabled = !isLoading,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3E6EF))
+                        colors = ButtonDefaults.buttonColors(containerColor = NeutralActionBackground)
                     ) {
-                        Text("Cancel", color = Color(0xFF7C8394), fontWeight = FontWeight.SemiBold)
+                        Text("Cancel", color = NeutralActionText, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -349,10 +361,11 @@ private fun MonthSection(
 ) {
     Text(
         text = group.month,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.sp,
-        color = TextSecondary,
+        style = Caption.copy(
+            color = TextSecondary,
+            letterSpacing = 1.sp,
+            fontWeight = FontWeight.SemiBold
+        ),
         modifier = Modifier.padding(start = 20.dp, bottom = 12.dp)
     )
 
@@ -395,10 +408,11 @@ private fun DayRow(
         ) {
             Text(
                 text = day.dayOfWeekLabel,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary,
-                letterSpacing = 0.5.sp
+                style = Caption.copy(
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.5.sp
+                )
             )
             Spacer(Modifier.height(4.dp))
             if (day.isHighlighted) {
@@ -411,17 +425,17 @@ private fun DayRow(
                 ) {
                     Text(
                         text = "${day.dayNumber}",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        style = LabelLarge.copy(color = CardWhite, fontSize = 15.sp)
                     )
                 }
             } else {
                 Text(
                     text = "${day.dayNumber}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary
+                    style = LabelLarge.copy(
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
                 )
             }
         }
@@ -469,9 +483,11 @@ private fun EventCard(
             ) {
                 Text(
                     text = event.title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    style = HeadingStyle3.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    ),
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -487,9 +503,10 @@ private fun EventCard(
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = event.type,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextPrimary
+                            style = LabelSmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = TextPrimary
+                            )
                         )
                     }
                 }
@@ -504,8 +521,7 @@ private fun EventCard(
             if (timeLabel.isNotBlank()) {
                 Text(
                     text = timeLabel,
-                    fontSize = 13.sp,
-                    color = TextSecondary
+                    style = LabelMedium.copy(color = TextSecondary)
                 )
             }
 
@@ -531,17 +547,20 @@ private fun EventCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = event.locationDisplayName.ifBlank { event.location },
-                        fontSize = 12.sp,
-                        color = PrimaryBlue,
-                        fontWeight = FontWeight.Medium,
+                        style = LabelSmall.copy(
+                            color = PrimaryBlue,
+                            fontWeight = FontWeight.Medium
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (event.locationDisplayAddress.isNotBlank()) {
                         Text(
                             text = event.locationDisplayAddress,
-                            fontSize = 11.sp,
-                            color = TextSecondary,
+                            style = Caption.copy(
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Normal
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -594,7 +613,7 @@ private fun EventCard(
                         onDismissRequest = onMenuDismiss
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Leave workout", color = Color(0xFFD32F2F)) },
+                            text = { Text("Leave workout", color = DestructiveText) },
                             onClick = onLeaveWorkout,
                             enabled = !isActionInProgress
                         )
@@ -643,10 +662,10 @@ private fun EventAttendeesSummary(attendees: List<Attendee>, modifier: Modifier 
     ) {
         Box {
             Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                attendees.forEach { attendee ->
+                attendees.take(3).forEach { attendee ->
                     UserAvatar(
                         name = attendee.name,
-                        size = 20.dp,
+                        size = 24.dp,
                         userId = attendee.userId,
                         profilePhotoUrl = attendee.profilePhotoUrl.takeIf { it.isNotBlank() },
                         showShadow = false
@@ -656,18 +675,8 @@ private fun EventAttendeesSummary(attendees: List<Attendee>, modifier: Modifier 
         }
 
         Text(
-            text = "with",
-            fontSize = 11.sp,
-            color = TextSecondary,
-            fontWeight = FontWeight.Normal
-        )
-
-        val displayNames = attendees.take(2).joinToString(", ") { it.name }
-        Text(
-            text = if (attendees.size > 2) "$displayNames, +${attendees.size - 2} more" else displayNames,
-            fontSize = 11.sp,
-            color = TextPrimary,
-            fontWeight = FontWeight.Medium,
+            text = buildParticipantNamesAnnotated(attendees.map { it.name }),
+            style = LabelMedium.copy(color = TextPrimary, fontWeight = FontWeight.Light),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -685,9 +694,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
     ) {
         Text(
             text = message,
-            color = TextPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
+            style = HeadingStyle3.copy(color = TextPrimary)
         )
         Spacer(Modifier.height(12.dp))
         Button(
@@ -695,7 +702,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
         ) {
-            Text("Retry", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text("Retry", color = CardWhite, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -710,15 +717,12 @@ private fun EmptyState() {
     ) {
         Text(
             text = "No upcoming activities yet",
-            color = TextPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
+            style = HeadingStyle3.copy(color = TextPrimary)
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = "Add a workout to see it here.",
-            color = TextSecondary,
-            fontSize = 13.sp
+            style = LabelMedium.copy(color = TextSecondary)
         )
     }
 }

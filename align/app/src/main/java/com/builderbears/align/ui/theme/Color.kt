@@ -54,6 +54,10 @@ val NavBarHighlight = Color(0xFFD9D0F0)
 
 // Error
 val ErrorRed = Color(0xFFE53935)
+val DestructiveAction = Color(0xFFF25555)
+val DestructiveText = Color(0xFFD32F2F)
+val NeutralActionBackground = Color(0xFFE3E6EF)
+val NeutralActionText = Color(0xFF7C8394)
 
 // Inbox (TODO: TEMP until placeholderss are removed)
 val InboxItemBackground = Color(0xFFE8DFF5)

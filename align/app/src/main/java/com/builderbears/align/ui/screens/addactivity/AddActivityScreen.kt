@@ -81,6 +81,8 @@ import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.BorderMuted
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.Caption
+import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
@@ -319,9 +321,7 @@ fun AddActivityScreen(
         ) {
             Text(
                 text = if (isEditMode) "Edit Workout" else "Add Activity",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
             )
             if (isModal) {
                 IconButton(onClick = { onDismissRequest?.invoke() }) {
@@ -1038,10 +1038,11 @@ private fun User.toFriend(): Friend {
 private fun SectionLabel(label: String) {
     Text(
         text = label,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.8.sp,
-        color = TextSecondary,
+        style = Caption.copy(
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.8.sp,
+            color = TextSecondary
+        ),
         modifier = Modifier.padding(start = 20.dp, bottom = 8.dp)
     )
 }
@@ -1147,7 +1148,7 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
             ) {
                 if (isSelected) {
                     Icon(Icons.Default.Check, contentDescription = null,
-                        tint = Color.White, modifier = Modifier.size(14.dp))
+                        tint = CardWhite, modifier = Modifier.size(14.dp))
                 }
             }
         }
@@ -1236,7 +1237,7 @@ private fun CalendarPicker(
                                         text = "$dayNum",
                                         fontSize = 14.sp,
                                         color = when {
-                                            isSelected -> Color.White
+                                            isSelected -> CardWhite
                                             isToday -> PrimaryBlue
                                             else -> TextPrimary
                                         },
@@ -1306,7 +1307,7 @@ private fun TimePickerWheel(
                     ) {
                         Text(
                             text = if (pm) "PM" else "AM",
-                            color = if (isPm == pm) Color.White else TextSecondary,
+                            color = if (isPm == pm) CardWhite else TextSecondary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
                         )
@@ -1348,7 +1349,7 @@ private fun <T> WheelColumn(
                     fontSize = if (isSelected) 18.sp else 15.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = when {
-                        isSelected -> Color.White
+                        isSelected -> CardWhite
                         kotlin.math.abs(offset) == 1 -> TextPrimary.copy(alpha = 0.6f)
                         else -> TextPrimary.copy(alpha = 0.3f)
                     }

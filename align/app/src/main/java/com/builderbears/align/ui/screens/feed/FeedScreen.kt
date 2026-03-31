@@ -64,8 +64,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +109,7 @@ import com.builderbears.align.ui.theme.ScheduleChipPurple
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
+import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 
@@ -571,7 +570,7 @@ private fun ActivityMembers(
             }
         }
         Text(
-            text = buildParticipantDisplayAnnotated(participants),
+            text = buildParticipantNamesAnnotated(participants.map { it.name }),
             style = LabelMedium.copy(color = TextPrimary, fontWeight = FontWeight.Light),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1041,43 +1040,6 @@ private fun ExpandedPhotoDialog(
 
 private fun formatNotesCount(count: Int): String {
     return if (count > 10) "10+" else count.toString()
-}
-
-private fun buildParticipantDisplayAnnotated(participants: List<ActivityParticipant>) = buildAnnotatedString {
-    val allNames = participants.map { it.name.trim() }.filter { it.isNotBlank() }
-    val names = allNames.take(3)
-
-    fun appendBoldName(name: String) {
-        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-        append(name)
-        pop()
-    }
-
-    when (names.size) {
-        0 -> Unit
-        1 -> {
-            appendBoldName(names[0])
-        }
-        2 -> {
-            appendBoldName(names[0])
-            append(" and ")
-            appendBoldName(names[1])
-        }
-        else -> {
-            appendBoldName(names[0])
-            append(", ")
-            appendBoldName(names[1])
-            val moreCount = allNames.size - 3
-            if (moreCount > 0) {
-                append(", ")
-                appendBoldName(names[2])
-                append(" +$moreCount more")
-            } else {
-                append(", and ")
-                appendBoldName(names[2])
-            }
-        }
-    }
 }
 
 private fun String.feedWorkoutChipColor(): Color {
