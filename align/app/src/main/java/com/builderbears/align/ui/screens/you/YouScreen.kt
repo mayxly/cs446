@@ -123,7 +123,6 @@ private val placeholderFriends = listOf(
     YouFriend("Jennie Park", "J", AvatarGreen2, 0)
 )
 
-private val weeklyMinutes = listOf(45, 30, 60, 50, 40, 55, 20)
 private val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 
 @Composable
@@ -138,6 +137,10 @@ fun YouScreen(
     val user by viewModel.user.collectAsState()
     val profilePhotoUrl by viewModel.profilePhotoUrl.collectAsState()
     val isUploadingPhoto by viewModel.isUploadingPhoto.collectAsState()
+    val totalWorkouts by viewModel.totalWorkouts.collectAsState()
+    val thisMonthWorkouts by viewModel.thisMonthWorkouts.collectAsState()
+    val weeklyMinutes by viewModel.weeklyMinutes.collectAsState()
+    val topActivity by viewModel.topActivity.collectAsState()
 
     // Local UI state
     var name by remember(user) { mutableStateOf(user?.name ?: "Your Name") }
@@ -394,7 +397,7 @@ fun YouScreen(
                     // Workout count
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "84",
+                            text = "$totalWorkouts",
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryBlue
@@ -576,12 +579,12 @@ fun YouScreen(
         Spacer(Modifier.height(16.dp))
 
         // Stats Row
-        StatsRow()
+        StatsRow(thisMonthWorkouts = thisMonthWorkouts, topActivity = topActivity)
 
         Spacer(Modifier.height(16.dp))
 
         // Weekly Activity
-        WeeklyActivityCard()
+        WeeklyActivityCard(weeklyMinutes = weeklyMinutes)
 
         Spacer(Modifier.height(16.dp))
 
@@ -656,7 +659,7 @@ fun YouScreen(
 }
 
 @Composable
-private fun StatsRow() {
+private fun StatsRow(thisMonthWorkouts: Int, topActivity: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -680,7 +683,7 @@ private fun StatsRow() {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "13",
+                    text = "$thisMonthWorkouts",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -718,10 +721,13 @@ private fun StatsRow() {
                         .background(PrimaryBlueLight, RoundedCornerShape(20.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text(text = "\uD83C\uDFCB\uFE0F", fontSize = 14.sp)
+                    Text(
+                        text = YouViewModel.workoutEmoji(topActivity ?: ""),
+                        fontSize = 14.sp
+                    )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "Gym",
+                        text = YouViewModel.workoutLabel(topActivity ?: ""),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = PrimaryBlue
@@ -780,8 +786,8 @@ private fun StatsRow() {
 }
 
 @Composable
-private fun WeeklyActivityCard() {
-    val maxMinutes = weeklyMinutes.max()
+private fun WeeklyActivityCard(weeklyMinutes: List<Int>) {
+    val maxMinutes = weeklyMinutes.maxOrNull()?.coerceAtLeast(1) ?: 1
     val maxBarHeight = 100.dp
 
     Card(
