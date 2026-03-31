@@ -189,8 +189,9 @@ class YouViewModel : ViewModel() {
 
     fun sendFriendRequest(toUserId: String) {
         val currentUserId = auth.currentUser?.uid ?: return
+        val currentUserName = _user.value?.name ?: ""
         viewModelScope.launch {
-            friendService.sendRequest(currentUserId, toUserId)
+            friendService.sendRequest(currentUserId, toUserId, currentUserName)
                 .onSuccess {
                     _friendStatuses.value = _friendStatuses.value + (toUserId to "SENT")
                 }
@@ -204,6 +205,16 @@ class YouViewModel : ViewModel() {
                 .onSuccess {
                     _friendStatuses.value = _friendStatuses.value + (fromUserId to "ACCEPTED")
                     loadFriends(_friendStatuses.value)
+                }
+        }
+    }
+
+    fun cancelFriendRequest(otherUserId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            friendService.cancelRequest(currentUserId, otherUserId)
+                .onSuccess {
+                    _friendStatuses.value = _friendStatuses.value - otherUserId
                 }
         }
     }

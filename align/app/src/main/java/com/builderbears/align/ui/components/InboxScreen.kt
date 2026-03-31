@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -30,12 +28,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,12 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.builderbears.align.ui.components.UserAvatar
-import com.builderbears.align.ui.theme.AvatarOrange
-import com.builderbears.align.ui.theme.AvatarPink
-import com.builderbears.align.ui.theme.AvatarYellow
-import com.builderbears.align.ui.theme.AvatarGreen2
-import com.builderbears.align.ui.theme.BorderLight
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.builderbears.align.data.model.AppNotification
+import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.ErrorRed
@@ -67,38 +62,20 @@ import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
-import com.builderbears.align.ui.theme.Indigo
 import com.builderbears.align.ui.theme.InboxItemBackground
+import com.builderbears.align.ui.theme.Indigo
 import com.builderbears.align.ui.theme.Micro
 import com.builderbears.align.ui.theme.NotificationAccent
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
 
-data class Notification(
-    val id: String,
-    val title: String,
-    val message: String,
-    val timestamp: String,
-    val userInitials: String = "",
-    val avatarColor: Color = NotificationAccent,
-    val actions: List<NotificationAction> = emptyList(),
-    var read: Boolean = false
-)
-
-data class NotificationAction(
-    val label: String,
-    val isPrimary: Boolean = true,
-    val onClick: () -> Unit = {}
-)
-
 @Composable
 fun InboxScreen(
     onDismiss: () -> Unit,
-    notifications: List<Notification> = getDefaultNotifications(),
-    onNotificationClick: (String, Boolean) -> Unit = { _, _ -> }
+    inboxViewModel: InboxViewModel = viewModel()
 ) {
-    var notificationsList by remember { mutableStateOf(notifications) }
+    val notifications by inboxViewModel.notifications.collectAsState()
     var isVisible by remember { mutableStateOf(true) }
 
     Dialog(
@@ -193,21 +170,44 @@ fun InboxScreen(
                             }
                         }
 
-                        // Notifications list
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
-                        ) {
-                            items(notificationsList.size) { index ->
-                                NotificationItem(
-                                    notification = notificationsList[index],
-                                    onClick = {
-                                        val updated = notificationsList.toMutableList()
-                                        updated[index] = updated[index].copy(read = true)
-                                        notificationsList = updated
-                                        onNotificationClick(notificationsList[index].id, true)
-                                    }
+                        if (notifications.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                Text(
+                                    text = "No notifications yet",
+                                    fontSize = 14.sp,
+                                    color = TextSecondary
                                 )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                            ) {
+                                items(notifications, key = { it.id }) { notification ->
+                                    NotificationItem(
+                                        notification = notification,
+                                        onClick = {
+                                            if (!notification.read) {
+                                                inboxViewModel.markAsRead(notification.id)
+                                            }
+                                        },
+                                        onAccept = {
+                                            if (notification.type == "friend_request") {
+                                                inboxViewModel.acceptFriendRequest(notification)
+                                            }
+                                        },
+                                        onDecline = {
+                                            if (notification.type == "friend_request") {
+                                                inboxViewModel.declineFriendRequest(notification)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -219,8 +219,10 @@ fun InboxScreen(
 
 @Composable
 private fun NotificationItem(
-    notification: Notification,
-    onClick: () -> Unit
+    notification: AppNotification,
+    onClick: () -> Unit,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -230,28 +232,14 @@ private fun NotificationItem(
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Pfp with initials
-            if (notification.userInitials.isNotEmpty()) {
-                UserAvatar(
-                    name = notification.userInitials,
-                    size = 40.dp
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(NotificationAccent)
-                        .align(Alignment.Top)
-                        .offset(y = 8.dp)
-                )
-                Spacer(modifier = Modifier.size(32.dp))
-            }
+            UserAvatar(
+                name = notification.fromUserName,
+                size = 40.dp
+            )
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -260,7 +248,7 @@ private fun NotificationItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = notification.title,
+                        text = notification.fromUserName,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary,
@@ -268,12 +256,14 @@ private fun NotificationItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(NotificationAccent)
-                    )
+                    if (!notification.read) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(NotificationAccent)
+                        )
+                    }
                 }
 
                 Text(
@@ -285,53 +275,42 @@ private fun NotificationItem(
                 )
 
                 Text(
-                    text = notification.timestamp,
+                    text = formatTimestamp(notification.timestamp),
                     fontSize = 11.sp,
                     color = TextMuted
                 )
 
-                // Action buttons
-                if (notification.actions.isNotEmpty()) {
+                // Action buttons for friend requests
+                if (notification.type == "friend_request" && !notification.read) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        notification.actions.forEach { action ->
-                            Button(
-                                onClick = action.onClick,
-                                modifier = Modifier
-                                    .height(28.dp)
-                                    .width(60.dp),
-                                colors = if (action.isPrimary) {
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = Indigo
-                                    )
-                                } else {
-                                    ButtonDefaults.outlinedButtonColors(
-                                        contentColor = TextSecondary
-                                    )
-                                },
-                                border = if (!action.isPrimary) {
-                                    BorderStroke(
-                                        1.dp,
-                                        TextMuted
-                                    )
-                                } else null,
-                                contentPadding = PaddingValues(
-                                    horizontal = 8.dp,
-                                    vertical = 0.dp
-                                ),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = action.label,
-                                    style = Micro.copy(
-                                        color = if (action.isPrimary) CardWhite else TextSecondary,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                )
-                            }
+                        Button(
+                            onClick = onAccept,
+                            modifier = Modifier.height(28.dp).width(68.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Indigo),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "Accept",
+                                style = Micro.copy(color = CardWhite, fontWeight = FontWeight.Medium)
+                            )
+                        }
+                        Button(
+                            onClick = onDecline,
+                            modifier = Modifier.height(28.dp).width(68.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                            border = BorderStroke(1.dp, TextMuted),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "Decline",
+                                style = Micro.copy(color = TextSecondary, fontWeight = FontWeight.Medium)
+                            )
                         }
                     }
                 }
@@ -340,61 +319,27 @@ private fun NotificationItem(
     }
 }
 
-// TODO: Remove this temp stuff
-private fun getDefaultNotifications(): List<Notification> {
-    return listOf(
-        Notification(
-            id = "1",
-            title = "Sam Reyes",
-            message = "sent you a follow request",
-            timestamp = "2 min ago",
-            userInitials = "S",
-            avatarColor = AvatarPink,
-            read = false,
-            actions = listOf(
-                NotificationAction("Accept", isPrimary = true),
-                NotificationAction("Decline", isPrimary = false)
-            )
-        ),
-        Notification(
-            id = "2",
-            title = "Jordan Park",
-            message = "reacted 🔥 to your Morning 5k post",
-            timestamp = "18 min ago",
-            userInitials = "J",
-            avatarColor = AvatarYellow,
-            read = false
-        ),
-        Notification(
-            id = "3",
-            title = "Alex Kim",
-            message = "invited you to Morning Run on Wed, Mar 13",
-            timestamp = "1 hr ago",
-            userInitials = "A",
-            avatarColor = AvatarGreen2,
-            read = false,
-            actions = listOf(
-                NotificationAction("Join", isPrimary = true),
-                NotificationAction("Decline", isPrimary = false)
-            )
-        ),
-        Notification(
-            id = "4",
-            title = "Maya Chen",
-            message = "reacted 💪 to your Weight Training post",
-            timestamp = "3 hr ago",
-            userInitials = "M",
-            avatarColor = AvatarOrange,
-            read = false
-        )
-    )
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    val minutes = diff / 60_000
+    val hours = diff / 3_600_000
+    val days = diff / 86_400_000
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "$minutes min ago"
+        hours < 24 -> "$hours hr ago"
+        days < 7 -> "$days days ago"
+        else -> "${days / 7}w ago"
+    }
 }
 
 // Reusable notification bell button with badge
 @Composable
 fun NotificationButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    unreadCount: Int = 0
 ) {
     Box(modifier = modifier) {
         Surface(
@@ -414,12 +359,14 @@ fun NotificationButton(
                 )
             }
         }
-        NotificationCountBadge(
-            count = 3,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 4.dp, y = (-4).dp)
-        )
+        if (unreadCount > 0) {
+            NotificationCountBadge(
+                count = unreadCount,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+            )
+        }
     }
 }
 

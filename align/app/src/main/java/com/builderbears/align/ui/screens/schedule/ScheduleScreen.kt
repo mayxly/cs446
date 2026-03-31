@@ -41,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -65,6 +66,7 @@ import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationCountBadge
+import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.data.model.Attendee
 import com.builderbears.align.data.model.MonthGroup
 import com.builderbears.align.data.model.ScheduledDay
@@ -97,10 +99,12 @@ import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
 
 @Composable
 fun ScheduleScreen(
-    viewModel: ScheduleViewModel = viewModel()
+    viewModel: ScheduleViewModel = viewModel(),
+    inboxViewModel: InboxViewModel = viewModel()
 ) {
     val uiState = viewModel.uiState
     val context = LocalContext.current
+    val unreadCount by inboxViewModel.unreadCount.collectAsState()
     var showInbox by remember { mutableStateOf(false) }
     var expandedMenuEventId by remember { mutableStateOf<String?>(null) }
     var editingActivityId by remember { mutableStateOf<String?>(null) }
@@ -177,12 +181,14 @@ fun ScheduleScreen(
                         )
                     }
                 }
-                NotificationCountBadge(
-                    count = 3,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp)
-                )
+                if (unreadCount > 0) {
+                    NotificationCountBadge(
+                        count = unreadCount,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = (-4).dp)
+                    )
+                }
             }
         }
 
@@ -247,7 +253,11 @@ fun ScheduleScreen(
 
     if (showInbox) {
         InboxScreen(
-            onDismiss = { showInbox = false }
+            onDismiss = {
+                showInbox = false
+                inboxViewModel.loadNotifications()
+            },
+            inboxViewModel = inboxViewModel
         )
     }
 

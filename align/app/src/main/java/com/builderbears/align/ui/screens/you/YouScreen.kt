@@ -113,10 +113,12 @@ private val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 @Composable
 fun YouScreen(
     onLogout: () -> Unit,
-    viewModel: YouViewModel = viewModel()
+    viewModel: YouViewModel = viewModel(),
+    inboxViewModel: InboxViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val unreadCount by inboxViewModel.unreadCount.collectAsState()
 
     // ViewModel state
     val user by viewModel.user.collectAsState()
@@ -227,7 +229,7 @@ fun YouScreen(
                         )
                     }
                 }
-                NotificationButton(onClick = { showInbox = true })
+                NotificationButton(onClick = { showInbox = true }, unreadCount = unreadCount)
             }
         }
 
@@ -593,7 +595,11 @@ fun YouScreen(
 
     if (showInbox) {
         InboxScreen(
-            onDismiss = { showInbox = false }
+            onDismiss = {
+                showInbox = false
+                inboxViewModel.loadNotifications()
+            },
+            inboxViewModel = inboxViewModel
         )
     }
 
@@ -656,6 +662,7 @@ fun YouScreen(
             onSearch = { viewModel.searchUsers(it) },
             onRequest = { viewModel.sendFriendRequest(it) },
             onAccept = { viewModel.acceptFriendRequest(it) },
+            onCancel = { viewModel.cancelFriendRequest(it) },
             onRemove = { viewModel.removeFriend(it) },
             onDismiss = {
                 showAddFriendDialog = false
@@ -752,43 +759,43 @@ private fun StatsRow(thisMonthWorkouts: Int, topActivity: String?) {
         }
 
         // Top Friend
-        Card(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = CardWhite),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    UserAvatar(
-                        name = "Sam Reyes",
-                        size = 28.dp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "Sam Reyes",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "TOP FRIEND",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary,
-                    letterSpacing = 0.5.sp
-                )
-            }
-        }
+//        Card(
+//            modifier = Modifier.weight(1f).fillMaxHeight(),
+//            shape = RoundedCornerShape(14.dp),
+//            colors = CardDefaults.cardColors(containerColor = CardWhite),
+//            elevation = CardDefaults.cardElevation(0.dp)
+//        ) {
+//            Column(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .fillMaxHeight()
+//                    .padding(vertical = 16.dp),
+//                horizontalAlignment = Alignment.CenterHorizontally,
+//                verticalArrangement = Arrangement.Center
+//            ) {
+//                Row(verticalAlignment = Alignment.CenterVertically) {
+//                    UserAvatar(
+//                        name = "Sam Reyes",
+//                        size = 28.dp
+//                    )
+//                    Spacer(Modifier.width(6.dp))
+//                    Text(
+//                        text = "Sam Reyes",
+//                        fontSize = 12.sp,
+//                        fontWeight = FontWeight.SemiBold,
+//                        color = TextPrimary
+//                    )
+//                }
+//                Spacer(Modifier.height(4.dp))
+//                Text(
+//                    text = "TOP FRIEND",
+//                    fontSize = 9.sp,
+//                    fontWeight = FontWeight.SemiBold,
+//                    color = TextSecondary,
+//                    letterSpacing = 0.5.sp
+//                )
+//            }
+//        }
     }
 }
 
@@ -943,6 +950,7 @@ private fun AddFriendDialog(
     onSearch: (String) -> Unit,
     onRequest: (String) -> Unit,
     onAccept: (String) -> Unit,
+    onCancel: (String) -> Unit,
     onRemove: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1040,6 +1048,7 @@ private fun AddFriendDialog(
                                 status = status,
                                 onRequest = { onRequest(user.userId) },
                                 onAccept = { onAccept(user.userId) },
+                                onCancel = { onCancel(user.userId) },
                                 onRemove = { onRemove(user.userId) }
                             )
                         }
@@ -1055,6 +1064,7 @@ private fun FriendActionButton(
     status: String?,
     onRequest: () -> Unit,
     onAccept: () -> Unit,
+    onCancel: () -> Unit,
     onRemove: () -> Unit
 ) {
     when (status) {
@@ -1068,8 +1078,7 @@ private fun FriendActionButton(
             Text("Unfriend", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DestructiveAction)
         }
         "SENT" -> OutlinedButton(
-            onClick = {},
-            enabled = false,
+            onClick = onCancel,
             shape = RoundedCornerShape(8.dp),
             border = BorderStroke(1.dp, BorderLight),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),

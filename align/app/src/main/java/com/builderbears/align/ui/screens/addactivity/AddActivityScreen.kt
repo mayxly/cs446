@@ -51,6 +51,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,6 +77,7 @@ import androidx.navigation.NavController
 import com.builderbears.align.data.model.User
 import com.builderbears.align.ui.navigation.Route
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
@@ -115,9 +117,11 @@ fun AddActivityScreen(
     activityId: String? = null,
     isModal: Boolean = false,
     onDismissRequest: (() -> Unit)? = null,
-    viewModel: AddActivityViewModel = viewModel()
+    viewModel: AddActivityViewModel = viewModel(),
+    inboxViewModel: InboxViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val unreadCount by inboxViewModel.unreadCount.collectAsState()
     val isEditMode = !activityId.isNullOrBlank()
 
     var activityName   by remember { mutableStateOf("") }
@@ -332,7 +336,7 @@ fun AddActivityScreen(
                     )
                 }
             } else {
-                NotificationButton(onClick = { showInbox = true })
+                NotificationButton(onClick = { showInbox = true }, unreadCount = unreadCount)
             }
         }
 
@@ -892,7 +896,11 @@ fun AddActivityScreen(
 
     if (showInbox) {
         InboxScreen(
-            onDismiss = { showInbox = false }
+            onDismiss = {
+                showInbox = false
+                inboxViewModel.loadNotifications()
+            },
+            inboxViewModel = inboxViewModel
         )
     }
 }

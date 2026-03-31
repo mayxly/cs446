@@ -79,6 +79,7 @@ import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.model.ActivityParticipant
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.NotificationButton
+import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.BorderMuted
@@ -115,11 +116,12 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
+fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxViewModel = viewModel()) {
     val activities by viewModel.activities.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val uploadingActivityIds by viewModel.uploadingActivityIds.collectAsState()
+    val unreadCount by inboxViewModel.unreadCount.collectAsState()
 
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     var showInbox by remember { mutableStateOf(false) }
@@ -200,7 +202,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                         text = "Past Workouts",
                         style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
                     )
-                    NotificationButton(onClick = { showInbox = true })
+                    NotificationButton(onClick = { showInbox = true }, unreadCount = unreadCount)
                 }
             }
 
@@ -325,7 +327,11 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
 
     if (showInbox) {
         InboxScreen(
-            onDismiss = { showInbox = false }
+            onDismiss = {
+                showInbox = false
+                inboxViewModel.loadNotifications()
+            },
+            inboxViewModel = inboxViewModel
         )
     }
 }
