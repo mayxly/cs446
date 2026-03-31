@@ -61,6 +61,7 @@ import com.builderbears.align.ui.theme.AvatarYellow
 import com.builderbears.align.ui.theme.AvatarGreen2
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
@@ -68,6 +69,7 @@ import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
 import com.builderbears.align.ui.theme.Indigo
 import com.builderbears.align.ui.theme.InboxItemBackground
+import com.builderbears.align.ui.theme.Micro
 import com.builderbears.align.ui.theme.NotificationAccent
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
@@ -79,7 +81,7 @@ data class Notification(
     val message: String,
     val timestamp: String,
     val userInitials: String = "",
-    val avatarColor: Color = Color(0xFF2196F3),
+    val avatarColor: Color = NotificationAccent,
     val actions: List<NotificationAction> = emptyList(),
     var read: Boolean = false
 )
@@ -176,9 +178,7 @@ fun InboxScreen(
                         ) {
                             Text(
                                 text = "Inbox",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
                             )
                             IconButton(onClick = {
                                 isVisible = false
@@ -246,7 +246,7 @@ private fun NotificationItem(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2196F3))
+                        .background(NotificationAccent)
                         .align(Alignment.Top)
                         .offset(y = 8.dp)
                 )
@@ -326,9 +326,10 @@ private fun NotificationItem(
                             ) {
                                 Text(
                                     text = action.label,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (action.isPrimary) Color.White else TextSecondary
+                                    style = Micro.copy(
+                                        color = if (action.isPrimary) CardWhite else TextSecondary,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 )
                             }
                         }
@@ -437,9 +438,10 @@ fun NotificationCountBadge(
     ) {
         Text(
             text = count.toString(),
-            color = Color.White,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
+            style = Micro.copy(
+                color = CardWhite,
+                fontWeight = FontWeight.Bold
+            ),
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.Center)
         )

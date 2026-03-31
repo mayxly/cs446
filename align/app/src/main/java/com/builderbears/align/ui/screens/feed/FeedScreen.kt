@@ -1,91 +1,141 @@
 package com.builderbears.align.ui.screens.feed
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.data.model.ActivityParticipant
 import com.builderbears.align.ui.components.InboxScreen
-import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.BorderMuted
+import com.builderbears.align.ui.theme.Caption
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.DisplayStyle
+import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.HeadingStyle1
 import com.builderbears.align.ui.theme.Indigo
+import com.builderbears.align.ui.theme.InputBackground
+import com.builderbears.align.ui.theme.LabelLarge
+import com.builderbears.align.ui.theme.LabelMedium
+import com.builderbears.align.ui.theme.LabelSmall
+import com.builderbears.align.ui.theme.Micro
+import com.builderbears.align.ui.theme.NavBarHighlight
+import com.builderbears.align.ui.theme.ScheduleChipAmber
+import com.builderbears.align.ui.theme.ScheduleChipBlue
+import com.builderbears.align.ui.theme.ScheduleChipGray
+import com.builderbears.align.ui.theme.ScheduleChipGreen
+import com.builderbears.align.ui.theme.ScheduleChipMint
+import com.builderbears.align.ui.theme.ScheduleChipOrange
+import com.builderbears.align.ui.theme.ScheduleChipPink
+import com.builderbears.align.ui.theme.ScheduleChipPurple
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.ui.text.style.TextAlign
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
+import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
+import com.google.firebase.auth.FirebaseAuth
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
     val activities by viewModel.activities.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val uploadingActivityIds by viewModel.uploadingActivityIds.collectAsState()
 
-    var showEditModal by remember { mutableStateOf(false) }
-    var selectedActivity by remember { mutableStateOf<Activity?>(null) }
+    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     var showInbox by remember { mutableStateOf(false) }
+    var pendingUploadActivityId by remember { mutableStateOf<String?>(null) }
+    var expandedPhotoUrl by remember { mutableStateOf<String?>(null) }
+    var notesSheetActivityId by remember { mutableStateOf<String?>(null) }
 
-    val scope = rememberCoroutineScope()
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        val activityId = pendingUploadActivityId
+        if (uri != null && activityId != null) {
+            viewModel.uploadActivityPhoto(activityId, uri)
+        }
+        pendingUploadActivityId = null
+    }
 
     // Refresh on screen appear
     DisposableEffect(Unit) {
@@ -135,88 +185,115 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                 )
             }
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Past Workouts",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            NotificationButton(onClick = { showInbox = true })
-        }
-
-        HorizontalDivider(color = BorderLight, thickness = 1.dp, modifier = Modifier.padding(horizontal = 0.dp))
-
-        Spacer(Modifier.height(8.dp))
-
-        when {
-            error != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Error: ${error}",
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            activities.isEmpty() && isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Indigo)
-                }
-            }
-            activities.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No activities yet",
-                        color = TextMuted,
-                        fontSize = 16.sp
-                    )
-                }
-            }
-            else -> {
-                LazyColumn(
+            item {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    items(activities) { activity ->
+                    Text(
+                        text = "Past Workouts",
+                        style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
+                    )
+                    NotificationButton(onClick = { showInbox = true })
+                }
+            }
+
+            item {
+                HorizontalDivider(
+                    color = BorderMuted,
+                    thickness = 1.dp,
+                    modifier = Modifier.fillMaxWidth(0.66f)
+                )
+            }
+
+            item {
+                Spacer(Modifier.height(4.dp))
+            }
+
+            when {
+                error != null -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Error: $error",
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                activities.isEmpty() && isLoading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Indigo)
+                        }
+                    }
+                }
+
+                activities.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No activities yet",
+                                style = com.builderbears.align.ui.theme.HeadingStyle3.copy(color = TextMuted)
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    items(activities, key = { it.activityId }) { activity ->
+                        val canEdit = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
                         ActivityCard(
                             activity = activity,
+                            currentUserId = currentUserId,
+                            isUploading = activity.activityId in uploadingActivityIds,
                             onReactionClick = { emoji ->
-                                val hasReacted = activity.reactions[emoji]?.contains(
-                                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                ) == true
+                                if (!canEdit) return@ActivityCard
+                                val hasReacted = activity.reactions[emoji]?.contains(currentUserId) == true
                                 if (hasReacted) {
                                     viewModel.removeReaction(activity.activityId, emoji)
                                 } else {
                                     viewModel.addReaction(activity.activityId, emoji)
                                 }
                             },
-                            onCardClick = {
-                                selectedActivity = activity
-                                showEditModal = true
+                            onAddPhotoClick = {
+                                pendingUploadActivityId = activity.activityId
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            onExpandPhoto = { expandedPhotoUrl = it },
+                            onDeletePhoto = { photoUrl ->
+                                viewModel.deleteActivityPhoto(activity.activityId, photoUrl)
+                            },
+                            onLeaveActivity = {
+                                viewModel.leaveActivity(activity.activityId)
+                            },
+                            onOpenNotes = {
+                                notesSheetActivityId = activity.activityId
                             }
                         )
                     }
@@ -225,13 +302,24 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
         }
     }
 
-    if (showEditModal && selectedActivity != null) {
-        EditActivityModal(
-            activity = selectedActivity!!,
-            onDismiss = {
-                showEditModal = false
-                selectedActivity = null
+    val notesActivity = notesSheetActivityId?.let { selectedId ->
+        activities.firstOrNull { it.activityId == selectedId }
+    }
+    if (notesActivity != null) {
+        ActivityNotesBottomSheet(
+            activity = notesActivity,
+            currentUserId = currentUserId,
+            onDismiss = { notesSheetActivityId = null },
+            onSubmitNote = { note ->
+                viewModel.submitParticipantNote(notesActivity.activityId, note)
             }
+        )
+    }
+
+    expandedPhotoUrl?.let { photoUrl ->
+        ExpandedPhotoDialog(
+            photoUrl = photoUrl,
+            onDismiss = { expandedPhotoUrl = null }
         )
     }
 
@@ -245,56 +333,108 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
 @Composable
 private fun ActivityCard(
     activity: Activity,
+    currentUserId: String,
+    isUploading: Boolean,
     onReactionClick: (String) -> Unit,
-    onCardClick: () -> Unit
+    onAddPhotoClick: () -> Unit,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhoto: (String) -> Unit,
+    onLeaveActivity: () -> Unit,
+    onOpenNotes: () -> Unit
 ) {
+    var showLeaveMenu by remember { mutableStateOf(false) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
+    var pendingDeletePhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    val isParticipant = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
+    val noteCount = activity.participantNotes.values.count { it.isNotBlank() }
+    val workoutChipColor = remember(activity.workoutType) { activity.workoutType.feedWorkoutChipColor() }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onCardClick),
+            .padding(horizontal = 2.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: Profile photo, user info, activity type pill
+        Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Profile photo with border
-                UserAvatar(
-                    name = activity.primaryParticipantName(),
-                    size = 40.dp,
-                    userId = activity.primaryParticipantId(),
-                    profilePhotoUrl = activity.primaryParticipantPhotoUrl()
-                )
-
-                // User name and date/time
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = activity.primaryParticipantName(),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                if (activity.participants.isNotEmpty()) {
+                    ActivityMembers(
+                        participants = activity.participants,
+                        modifier = Modifier.weight(1f)
                     )
+                } else {
                     Text(
-                        text = "${formatActivityDate(activity.date)} • ${activity.time}",
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = "Shared workout",
+                        style = LabelSmall.copy(color = TextSecondary),
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Activity type pill
+                if (isParticipant) {
+                    Box {
+                        IconButton(
+                            onClick = { showLeaveMenu = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreHoriz,
+                                contentDescription = "Activity actions",
+                                tint = TextSecondary
+                            )
+                        }
+                        if (showLeaveMenu) {
+                            Popup(
+                                alignment = Alignment.TopEnd,
+                                offset = IntOffset(0, 44),
+                                onDismissRequest = { showLeaveMenu = false },
+                                properties = PopupProperties(focusable = true)
+                            ) {
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = CardWhite),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                                ) {
+                                    Text(
+                                        text = "Leave workout",
+                                        style = LabelMedium.copy(color = ErrorRed),
+                                        modifier = Modifier
+                                            .clickable {
+                                                showLeaveMenu = false
+                                                showLeaveConfirm = true
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${formatActivityDate(activity.date)} • ${activity.time}",
+                    style = Caption.copy(color = TextSecondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
                 Box(
                     modifier = Modifier
+                        .padding(start = 8.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0))
+                        .background(workoutChipColor)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -308,9 +448,7 @@ private fun ActivityCard(
                         )
                         Text(
                             text = activity.workoutType,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            style = LabelSmall.copy(color = TextPrimary)
                         )
                     }
                 }
@@ -318,100 +456,122 @@ private fun ActivityCard(
 
             Spacer(Modifier.height(4.dp))
 
-            // Members
-            if (activity.participants.isNotEmpty()) {
-                ActivityMembers(
-                    participants = activity.participants,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Activity name
             Text(
                 text = activity.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                style = HeadingStyle1.copy(fontSize = 18.sp, color = TextPrimary),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Activity image
-            if (!activity.imageUrl.isNullOrEmpty()) {
+            if (activity.description.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Placeholder
-                    Text(
-                        text = "[Image]",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                }
+                Text(
+                    text = activity.description,
+                    style = LabelMedium.copy(color = TextSecondary),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+
+            ActivityPhotoSection(
+                imageUrls = activity.imageUrls,
+                isParticipant = isParticipant,
+                isUploading = isUploading,
+                onAddPhotoClick = onAddPhotoClick,
+                onExpandPhoto = onExpandPhoto,
+                onDeletePhotoRequest = { photoUrl -> pendingDeletePhotoUrl = photoUrl }
+            )
 
             Spacer(Modifier.height(12.dp))
 
-            // Reactions bar
             EmojiReactionBar(
                 reactions = activity.reactions,
                 defaultReactions = defaultReactions,
                 onReactionClick = onReactionClick
             )
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = "Notes (${formatNotesCount(noteCount)})",
+                style = LabelLarge.copy(color = Indigo),
+                modifier = Modifier.clickable(onClick = onOpenNotes)
+            )
         }
+    }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text("Leave workout?") },
+            text = { Text("You will no longer see this activity in your feed.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLeaveConfirm = false
+                        onLeaveActivity()
+                    }
+                ) {
+                    Text("Leave", style = LabelMedium.copy(color = ErrorRed))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    pendingDeletePhotoUrl?.let { photoUrl ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletePhotoUrl = null },
+            title = { Text("Delete photo?") },
+            text = { Text("This will remove the photo for all participants in this activity.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeletePhotoUrl = null
+                        onDeletePhoto(photoUrl)
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeletePhotoUrl = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
 @Composable
 private fun ActivityMembers(
-    participants: List<com.builderbears.align.data.model.ActivityParticipant>,
+    participants: List<ActivityParticipant>,
     modifier: Modifier = Modifier
 ) {
     if (participants.isEmpty()) return
-
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Member pfps
-        Box {
-            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                participants.forEach { participant ->
-                    UserAvatar(
-                        name = participant.name,
-                        size = 20.dp,
-                        userId = participant.userId,
-                        profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
-                        showShadow = false
-                    )
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+            participants.take(3).forEach { participant ->
+                UserAvatar(
+                    name = participant.name,
+                    size = 24.dp,
+                    userId = participant.userId,
+                    profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
+                    showShadow = false
+                )
             }
         }
-
         Text(
-            text = "with",
-            fontSize = 11.sp,
-            color = TextSecondary,
-            fontWeight = FontWeight.Normal
-        )
-
-        // Names list
-        val displayNames = participants.take(2)
-            .map { it.name }
-            .joinToString(", ")
-
-        Text(
-            text = if (participants.size > 2) "$displayNames, +${participants.size - 2} more" else displayNames,
-            fontSize = 11.sp,
-            color = TextPrimary,
-            fontWeight = FontWeight.Medium,
+            text = buildParticipantNamesAnnotated(participants.map { it.name }),
+            style = LabelMedium.copy(color = TextPrimary, fontWeight = FontWeight.Light),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -419,16 +579,214 @@ private fun ActivityMembers(
     }
 }
 
-private fun Activity.primaryParticipantName(): String {
-    return participants.firstOrNull()?.name ?: "Workout"
+@Composable
+private fun ActivityPhotoSection(
+    imageUrls: List<String>,
+    isParticipant: Boolean,
+    isUploading: Boolean,
+    onAddPhotoClick: () -> Unit,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhotoRequest: (String) -> Unit
+) {
+    if (imageUrls.isEmpty() && !isParticipant) return
+
+    Spacer(Modifier.height(8.dp))
+
+    if (imageUrls.isEmpty()) {
+        if (isUploading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(InputBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Indigo, modifier = Modifier.size(28.dp))
+            }
+        } else {
+            AddPhotoZone(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                onClick = onAddPhotoClick
+            )
+        }
+        return
+    }
+
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(imageUrls, key = { it }) { url ->
+            ActivityPhotoTile(
+                photoUrl = url,
+                canDelete = isParticipant,
+                onExpandPhoto = onExpandPhoto,
+                onDeletePhotoRequest = onDeletePhotoRequest
+            )
+        }
+        if (isParticipant) {
+            item {
+                if (isUploading) {
+                    Box(
+                        modifier = Modifier
+                            .height(160.dp)
+                            .width(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(InputBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Indigo, modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .height(160.dp)
+                            .width(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(InputBackground)
+                            .clickable(onClick = onAddPhotoClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.CameraAlt,
+                            contentDescription = "Add photo",
+                            tint = Indigo,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
-private fun Activity.primaryParticipantId(): String {
-    return participants.firstOrNull()?.userId ?: ""
+@Composable
+private fun ActivityPhotoTile(
+    photoUrl: String,
+    canDelete: Boolean,
+    onExpandPhoto: (String) -> Unit,
+    onDeletePhotoRequest: (String) -> Unit
+) {
+    var showOverlay by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .height(160.dp)
+            .width(200.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { showOverlay = !showOverlay }
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(photoUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (showOverlay) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .clickable { showOverlay = false }
+            )
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PhotoOverlayIconButton(
+                    icon = Icons.Outlined.OpenInFull,
+                    contentDescription = "Expand photo",
+                    onClick = {
+                        showOverlay = false
+                        onExpandPhoto(photoUrl)
+                    }
+                )
+                PhotoOverlayIconButton(
+                    icon = Icons.Outlined.Delete,
+                    contentDescription = "Delete photo",
+                    enabled = canDelete,
+                    onClick = {
+                        showOverlay = false
+                        if (canDelete) {
+                            onDeletePhotoRequest(photoUrl)
+                        }
+                    }
+                )
+            }
+        }
+    }
 }
 
-private fun Activity.primaryParticipantPhotoUrl(): String? {
-    return participants.firstOrNull()?.profilePhotoUrl?.takeIf { it.isNotBlank() }
+@Composable
+private fun PhotoOverlayIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(CardWhite.copy(alpha = if (enabled) 0.95f else 0.45f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) TextPrimary else TextMuted,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun AddPhotoZone(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(InputBackground)
+            .drawBehind {
+                drawRoundRect(
+                    color = Indigo.copy(alpha = 0.5f),
+                    style = Stroke(
+                        width = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+                    ),
+                    cornerRadius = CornerRadius(12.dp.toPx())
+                )
+            }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Outlined.CameraAlt,
+                contentDescription = "Add a photo",
+                tint = Indigo,
+                modifier = Modifier.size(32.dp)
+            )
+            Text(
+                text = "Add a photo",
+                style = LabelLarge.copy(color = Indigo)
+            )
+            Text(
+                text = "Tap to upload from your library",
+                style = Caption.copy(color = TextMuted)
+            )
+        }
+    }
 }
 
 @Composable
@@ -437,7 +795,7 @@ private fun EmojiReactionBar(
     defaultReactions: List<String>,
     onReactionClick: (String) -> Unit
 ) {
-    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -473,10 +831,16 @@ private fun EmojiReactionButton(
         modifier = Modifier
             .height(28.dp)
             .wrapContentWidth()
-            .border(1.dp, Color(0xFFD0D0D0), RoundedCornerShape(14.dp))
+            .border(
+                width = 1.dp,
+                color = if (isReacted) Indigo else BorderLight,
+                shape = RoundedCornerShape(14.dp)
+            )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isReacted) Indigo.copy(alpha = 0.14f) else Color.Transparent
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -491,117 +855,202 @@ private fun EmojiReactionButton(
                 Spacer(Modifier.width(3.dp))
                 Text(
                     text = count.toString(),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = textColor
+                    style = Micro.copy(color = textColor)
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EditActivityModal(
+private fun ActivityNotesBottomSheet(
     activity: Activity,
-    onDismiss: () -> Unit
+    currentUserId: String,
+    onDismiss: () -> Unit,
+    onSubmitNote: (String) -> Unit
 ) {
-    Dialog(
+    val isParticipant = activity.participantIds.contains(currentUserId)
+    val hasSubmittedNote = !activity.participantNotes[currentUserId].isNullOrBlank()
+    var noteDraft by remember(activity.activityId) { mutableStateOf("") }
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        containerColor = CardWhite,
+        dragHandle = null,
+        tonalElevation = 0.dp
     ) {
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .background(CardWhite, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CardWhite),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Edit Activity",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            GradientPink.copy(alpha = 0.26f),
+                            GradientBlue.copy(alpha = 0.24f),
+                            GradientMint.copy(alpha = 0.24f)
+                        )
                     )
-                    IconButton(onClick = onDismiss) {
+                )
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(46.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(NavBarHighlight)
+            )
+
+            Text(
+                text = "Notes",
+                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            activity.participants.forEach { participant ->
+                ParticipantNoteRow(
+                    participant = participant,
+                    note = activity.participantNotes[participant.userId].orEmpty()
+                )
+            }
+
+            if (isParticipant && !hasSubmittedNote) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardWhite.copy(alpha = 0.82f))
+                        .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (noteDraft.isBlank()) {
+                            Text(
+                                text = "Share your workout note",
+                                style = LabelLarge.copy(color = TextSecondary)
+                            )
+                        }
+                        BasicTextField(
+                            value = noteDraft,
+                            onValueChange = { noteDraft = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = TextPrimary,
+                                fontSize = LabelLarge.fontSize,
+                                fontFamily = LabelLarge.fontFamily,
+                                fontWeight = LabelLarge.fontWeight,
+                                lineHeight = LabelLarge.lineHeight
+                            ),
+                            singleLine = false,
+                            maxLines = 3
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(if (noteDraft.trim().isNotEmpty()) Indigo else Indigo.copy(alpha = 0.35f))
+                            .clickable(enabled = noteDraft.trim().isNotEmpty()) {
+                                val trimmed = noteDraft.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    onSubmitNote(trimmed)
+                                    noteDraft = ""
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            tint = TextMuted
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send note",
+                            tint = CardWhite,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
-
-                Spacer(Modifier.height(20.dp))
-
-                // Activity info display
-                Text(
-                    text = "Activity: ${activity.name}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Location: ${activity.location}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Type: ${activity.workoutType}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Date: ${activity.date} at ${activity.time}",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Text(
-                    text = "TODO: Activity Editing",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
-                )
-
-                Spacer(Modifier.height(24.dp))
-
-                // Close button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Indigo)
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Done",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
             }
+
+            Spacer(Modifier.height(10.dp))
         }
+    }
+}
+
+@Composable
+private fun ParticipantNoteRow(
+    participant: ActivityParticipant,
+    note: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        UserAvatar(
+            name = participant.name,
+            size = 24.dp,
+            userId = participant.userId,
+            profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
+            showShadow = false
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = participant.name,
+                style = HeadingStyle1.copy(fontSize = 18.sp, color = TextPrimary)
+            )
+            Text(
+                text = note.ifBlank { "No note yet" },
+                style = LabelLarge.copy(color = if (note.isBlank()) TextMuted else TextSecondary)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpandedPhotoDialog(
+    photoUrl: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.9f))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+        }
+    }
+}
+
+private fun formatNotesCount(count: Int): String {
+    return if (count > 10) "10+" else count.toString()
+}
+
+private fun String.feedWorkoutChipColor(): Color {
+    return when (trim().lowercase(Locale.US)) {
+        "run" -> ScheduleChipGreen
+        "gym" -> ScheduleChipPurple
+        "yoga" -> ScheduleChipPink
+        "cycle", "cycling" -> ScheduleChipMint
+        "swim", "swimming" -> ScheduleChipBlue
+        "basketball" -> ScheduleChipOrange
+        "hiit" -> ScheduleChipAmber
+        else -> ScheduleChipGray
     }
 }

@@ -282,13 +282,13 @@ class AddActivityViewModel : ViewModel() {
             }
         }
 
-        if (location.isBlank()) {
-            locationError = "Location is required"
-            isValid = false
-        } else if (locationPlaceId.isBlank()) {
-            locationError = "Please select a location from suggestions"
-            isValid = false
-        }
+        // if (location.isBlank()) {
+        //     locationError = "Location is required"
+        //     isValid = false
+        // } else if (locationPlaceId.isBlank()) {
+        //     locationError = "Please select a location from suggestions"
+        //     isValid = false
+        // }
 
         return isValid
     }
@@ -305,8 +305,7 @@ class AddActivityViewModel : ViewModel() {
         locationLng: Double?,
         date: String,
         time: String,
-        invitedUserIds: List<String> = emptyList(),
-        imageUrl: String? = null
+        invitedUserIds: List<String> = emptyList()
     ) {
         if (currentUserId.isEmpty()) {
             saveError = "Not logged in"
@@ -348,7 +347,7 @@ class AddActivityViewModel : ViewModel() {
                 time = time,
                 participantIds = participantIds,
                 participants = participants,
-                imageUrl = imageUrl
+                isPosted = false
             )
 
             activityService.createActivity(activity)
@@ -414,8 +413,7 @@ class AddActivityViewModel : ViewModel() {
         locationLng: Double?,
         date: String,
         time: String,
-        invitedUserIds: List<String> = emptyList(),
-        imageUrl: String? = null
+        invitedUserIds: List<String> = emptyList()
     ) {
         if (currentUserId.isEmpty()) {
             saveError = "Not logged in"
@@ -481,7 +479,6 @@ class AddActivityViewModel : ViewModel() {
 
             locationLat?.let { updates["locationLat"] = it }
             locationLng?.let { updates["locationLng"] = it }
-            imageUrl?.let { updates["imageUrl"] = it }
 
             activityService.updateActivity(activityId, participantIds, updates)
                 .onSuccess {
@@ -499,8 +496,7 @@ class AddActivityViewModel : ViewModel() {
                         date = date,
                         time = time,
                         participantIds = participantIds,
-                        participants = participants,
-                        imageUrl = imageUrl ?: existing.imageUrl
+                        participants = participants
                     )
                 }
                 .onFailure {

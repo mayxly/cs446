@@ -83,11 +83,19 @@ import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.BorderMuted
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.DestructiveAction
+import com.builderbears.align.ui.theme.DisplayStyle
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.HeadingStyle1
+import com.builderbears.align.ui.theme.InputBackground
+import com.builderbears.align.ui.theme.LabelLarge
+import com.builderbears.align.ui.theme.NeutralActionBackground
+import com.builderbears.align.ui.theme.NeutralActionText
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.PrimaryBlueLight
 import com.builderbears.align.ui.theme.TextMuted
@@ -201,15 +209,13 @@ fun YouScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "You",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
@@ -224,7 +230,7 @@ fun YouScreen(
                         Icon(
                             Icons.AutoMirrored.Outlined.Logout,
                             contentDescription = "Log out",
-                            tint = Color(0xFFF25555),
+                            tint = DestructiveAction,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -233,7 +239,13 @@ fun YouScreen(
             }
         }
 
-        HorizontalDivider(color = BorderLight, thickness = 1.dp)
+        HorizontalDivider(
+            color = BorderMuted,
+            thickness = 1.dp,
+            modifier = Modifier
+                .padding(start = 20.dp)
+                .fillMaxWidth(0.66f)
+        )
 
         Spacer(Modifier.height(20.dp))
 
@@ -299,7 +311,7 @@ fun YouScreen(
                             Icon(
                                 Icons.Outlined.CameraAlt,
                                 contentDescription = "Change photo",
-                                tint = Color.White,
+                                tint = CardWhite,
                                 modifier = Modifier.size(13.dp)
                             )
                         }
@@ -317,6 +329,7 @@ fun YouScreen(
                                     textStyle = TextStyle(
                                         fontSize = 20.sp,
                                         fontWeight = FontWeight.Bold,
+                                        fontFamily = HeadingStyle1.fontFamily,
                                         color = TextPrimary
                                     ),
                                     singleLine = true,
@@ -339,7 +352,7 @@ fun YouScreen(
                                     shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = PrimaryBlue,
-                                        contentColor = Color.White
+                                        contentColor = CardWhite
                                     ),
                                     modifier = Modifier.height(32.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
@@ -550,9 +563,9 @@ fun YouScreen(
                             }
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = CardWhite,
                             checkedTrackColor = PrimaryBlue,
-                            uncheckedThumbColor = Color.White,
+                            uncheckedThumbColor = CardWhite,
                             uncheckedTrackColor = BorderLight
                         )
                     )
@@ -623,17 +636,17 @@ fun YouScreen(
                                 onLogout()
                             },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF25555))
+                            colors = ButtonDefaults.buttonColors(containerColor = DestructiveAction)
                         ) {
-                            Text("Log Out", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Log Out", color = CardWhite, fontWeight = FontWeight.SemiBold)
                         }
 
                         Button(
                             onClick = { showLogoutDialog = false },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3E6EF))
+                            colors = ButtonDefaults.buttonColors(containerColor = NeutralActionBackground)
                         ) {
-                            Text("Cancel", color = Color(0xFF7C8394), fontWeight = FontWeight.SemiBold)
+                            Text("Cancel", color = NeutralActionText, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -970,7 +983,7 @@ private fun PasswordField(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F6FF)),
+        colors = CardDefaults.cardColors(containerColor = InputBackground),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -996,6 +1009,8 @@ private fun PasswordField(
                     onValueChange = onValueChange,
                     textStyle = TextStyle(
                         fontSize = 14.sp,
+                        fontFamily = LabelLarge.fontFamily,
+                        fontWeight = LabelLarge.fontWeight,
                         color = TextPrimary
                     ),
                     visualTransformation = PasswordVisualTransformation(),
