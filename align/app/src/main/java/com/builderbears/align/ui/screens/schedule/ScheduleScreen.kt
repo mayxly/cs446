@@ -69,6 +69,7 @@ import com.builderbears.align.data.model.MonthGroup
 import com.builderbears.align.data.model.ScheduledDay
 import com.builderbears.align.data.model.WorkoutEvent
 import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.BorderMuted
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
@@ -137,7 +138,7 @@ fun ScheduleScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -174,7 +175,13 @@ fun ScheduleScreen(
             }
         }
 
-        HorizontalDivider(color = BorderLight, thickness = 1.dp, modifier = Modifier.padding(horizontal = 0.dp))
+        HorizontalDivider(
+            color = BorderMuted,
+            thickness = 1.dp,
+            modifier = Modifier
+                .padding(start = 20.dp)
+                .fillMaxWidth(0.66f)
+        )
 
         Spacer(Modifier.height(16.dp))
 

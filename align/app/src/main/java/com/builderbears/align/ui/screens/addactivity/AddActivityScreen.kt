@@ -79,6 +79,7 @@ import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.BorderMuted
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
@@ -312,7 +313,7 @@ fun AddActivityScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -335,7 +336,13 @@ fun AddActivityScreen(
             }
         }
 
-        HorizontalDivider(color = BorderLight, thickness = 1.dp)
+        HorizontalDivider(
+            color = BorderMuted,
+            thickness = 1.dp,
+            modifier = Modifier
+                .padding(start = 20.dp)
+                .fillMaxWidth(0.66f)
+        )
 
         Spacer(Modifier.height(20.dp))
 
@@ -1108,7 +1115,7 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFFF5F6FE) else CardWhite
+            containerColor = if (isSelected) LightBlue else CardWhite
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {

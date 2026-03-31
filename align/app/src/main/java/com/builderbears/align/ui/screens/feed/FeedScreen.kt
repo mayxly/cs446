@@ -83,16 +83,36 @@ import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.theme.BorderLight
+import com.builderbears.align.ui.theme.BorderMuted
+import com.builderbears.align.ui.theme.Caption
 import com.builderbears.align.ui.theme.CardWhite
+import com.builderbears.align.ui.theme.DisplayStyle
+import com.builderbears.align.ui.theme.ErrorRed
 import com.builderbears.align.ui.theme.GradientBlue
 import com.builderbears.align.ui.theme.GradientMint
 import com.builderbears.align.ui.theme.GradientPink
 import com.builderbears.align.ui.theme.GradientYellow
+import com.builderbears.align.ui.theme.HeadingStyle1
 import com.builderbears.align.ui.theme.Indigo
+import com.builderbears.align.ui.theme.InputBackground
+import com.builderbears.align.ui.theme.LabelLarge
+import com.builderbears.align.ui.theme.LabelMedium
+import com.builderbears.align.ui.theme.LabelSmall
+import com.builderbears.align.ui.theme.Micro
+import com.builderbears.align.ui.theme.NavBarHighlight
+import com.builderbears.align.ui.theme.ScheduleChipAmber
+import com.builderbears.align.ui.theme.ScheduleChipBlue
+import com.builderbears.align.ui.theme.ScheduleChipGray
+import com.builderbears.align.ui.theme.ScheduleChipGreen
+import com.builderbears.align.ui.theme.ScheduleChipMint
+import com.builderbears.align.ui.theme.ScheduleChipOrange
+import com.builderbears.align.ui.theme.ScheduleChipPink
+import com.builderbears.align.ui.theme.ScheduleChipPurple
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
 import com.google.firebase.auth.FirebaseAuth
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,71 +186,85 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
                 )
             }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Past Workouts",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            NotificationButton(onClick = { showInbox = true })
-        }
-
-        HorizontalDivider(color = BorderLight, thickness = 1.dp)
-
-        Spacer(Modifier.height(8.dp))
-
-        when {
-            error != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Error: $error",
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            activities.isEmpty() && isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Indigo)
-                }
-            }
-            activities.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No activities yet",
-                        color = TextMuted,
-                        fontSize = 16.sp
-                    )
-                }
-            }
-            else -> {
-                LazyColumn(
+            item {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text(
+                        text = "Past Workouts",
+                        style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
+                    )
+                    NotificationButton(onClick = { showInbox = true })
+                }
+            }
+
+            item {
+                HorizontalDivider(
+                    color = BorderMuted,
+                    thickness = 1.dp,
+                    modifier = Modifier.fillMaxWidth(0.66f)
+                )
+            }
+
+            item {
+                Spacer(Modifier.height(4.dp))
+            }
+
+            when {
+                error != null -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Error: $error",
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                activities.isEmpty() && isLoading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Indigo)
+                        }
+                    }
+                }
+
+                activities.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No activities yet",
+                                style = com.builderbears.align.ui.theme.HeadingStyle3.copy(color = TextMuted)
+                            )
+                        }
+                    }
+                }
+
+                else -> {
                     items(activities, key = { it.activityId }) { activity ->
                         val canEdit = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
                         ActivityCard(
@@ -315,6 +349,7 @@ private fun ActivityCard(
 
     val isParticipant = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
     val noteCount = activity.participantNotes.values.count { it.isNotBlank() }
+    val workoutChipColor = remember(activity.workoutType) { activity.workoutType.feedWorkoutChipColor() }
 
     Card(
         modifier = Modifier
@@ -338,9 +373,7 @@ private fun ActivityCard(
                 } else {
                     Text(
                         text = "Shared workout",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        style = LabelSmall.copy(color = TextSecondary),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -366,14 +399,12 @@ private fun ActivityCard(
                             ) {
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    colors = CardDefaults.cardColors(containerColor = CardWhite),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
                                 ) {
                                     Text(
                                         text = "Leave workout",
-                                        color = Color(0xFFB24545),
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp,
+                                        style = LabelMedium.copy(color = ErrorRed),
                                         modifier = Modifier
                                             .clickable {
                                                 showLeaveMenu = false
@@ -395,8 +426,7 @@ private fun ActivityCard(
             ) {
                 Text(
                     text = "${formatActivityDate(activity.date)} • ${activity.time}",
-                    fontSize = 11.sp,
-                    color = TextSecondary,
+                    style = Caption.copy(color = TextSecondary),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -405,7 +435,7 @@ private fun ActivityCard(
                     modifier = Modifier
                         .padding(start = 8.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0))
+                        .background(workoutChipColor)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -419,9 +449,7 @@ private fun ActivityCard(
                         )
                         Text(
                             text = activity.workoutType,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            style = LabelSmall.copy(color = TextPrimary)
                         )
                     }
                 }
@@ -431,12 +459,20 @@ private fun ActivityCard(
 
             Text(
                 text = activity.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                style = HeadingStyle1.copy(fontSize = 18.sp, color = TextPrimary),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+
+            if (activity.description.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = activity.description,
+                    style = LabelMedium.copy(color = TextSecondary),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             ActivityPhotoSection(
                 imageUrls = activity.imageUrls,
@@ -459,9 +495,7 @@ private fun ActivityCard(
 
             Text(
                 text = "Notes (${formatNotesCount(noteCount)})",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Indigo,
+                style = LabelLarge.copy(color = Indigo),
                 modifier = Modifier.clickable(onClick = onOpenNotes)
             )
         }
@@ -479,7 +513,7 @@ private fun ActivityCard(
                         onLeaveActivity()
                     }
                 ) {
-                    Text("Leave", color = Color(0xFFB24545), fontWeight = FontWeight.Medium)
+                    Text("Leave", style = LabelMedium.copy(color = ErrorRed))
                 }
             },
             dismissButton = {
@@ -538,8 +572,7 @@ private fun ActivityMembers(
         }
         Text(
             text = buildParticipantDisplayAnnotated(participants),
-            fontSize = 13.sp,
-            color = TextPrimary,
+            style = LabelMedium.copy(color = TextPrimary, fontWeight = FontWeight.Light),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -567,7 +600,7 @@ private fun ActivityPhotoSection(
                     .fillMaxWidth()
                     .height(140.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF0EEFF)),
+                    .background(InputBackground),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = Indigo, modifier = Modifier.size(28.dp))
@@ -600,7 +633,7 @@ private fun ActivityPhotoSection(
                             .height(160.dp)
                             .width(80.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF0EEFF)),
+                            .background(InputBackground),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = Indigo, modifier = Modifier.size(24.dp))
@@ -611,7 +644,7 @@ private fun ActivityPhotoSection(
                             .height(160.dp)
                             .width(80.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF0EEFF))
+                            .background(InputBackground)
                             .clickable(onClick = onAddPhotoClick),
                         contentAlignment = Alignment.Center
                     ) {
@@ -700,7 +733,7 @@ private fun PhotoOverlayIconButton(
         modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = if (enabled) 0.95f else 0.45f))
+            .background(CardWhite.copy(alpha = if (enabled) 0.95f else 0.45f))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -721,10 +754,10 @@ private fun AddPhotoZone(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF0EEFF))
+            .background(InputBackground)
             .drawBehind {
                 drawRoundRect(
-                    color = Color(0xFF6B7FD4).copy(alpha = 0.5f),
+                    color = Indigo.copy(alpha = 0.5f),
                     style = Stroke(
                         width = 1.5.dp.toPx(),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
@@ -747,14 +780,11 @@ private fun AddPhotoZone(
             )
             Text(
                 text = "Add a photo",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Indigo
+                style = LabelLarge.copy(color = Indigo)
             )
             Text(
                 text = "Tap to upload from your library",
-                fontSize = 11.sp,
-                color = TextMuted
+                style = Caption.copy(color = TextMuted)
             )
         }
     }
@@ -804,7 +834,7 @@ private fun EmojiReactionButton(
             .wrapContentWidth()
             .border(
                 width = 1.dp,
-                color = if (isReacted) Indigo else Color(0xFFD0D0D0),
+                color = if (isReacted) Indigo else BorderLight,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick),
@@ -826,9 +856,7 @@ private fun EmojiReactionButton(
                 Spacer(Modifier.width(3.dp))
                 Text(
                     text = count.toString(),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = textColor
+                    style = Micro.copy(color = textColor)
                 )
             }
         }
@@ -849,7 +877,8 @@ private fun ActivityNotesBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color.Transparent,
+        containerColor = CardWhite,
+        dragHandle = null,
         tonalElevation = 0.dp
     ) {
         Column(
@@ -859,9 +888,9 @@ private fun ActivityNotesBottomSheet(
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFFFFF6F8),
-                            Color(0xFFF2F6FF),
-                            Color(0xFFF7FFF4)
+                            GradientPink.copy(alpha = 0.26f),
+                            GradientBlue.copy(alpha = 0.24f),
+                            GradientMint.copy(alpha = 0.24f)
                         )
                     )
                 )
@@ -874,14 +903,12 @@ private fun ActivityNotesBottomSheet(
                     .width(46.dp)
                     .height(5.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(Color(0xFFD8D5E3))
+                    .background(NavBarHighlight)
             )
 
             Text(
                 text = "Notes",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -898,7 +925,7 @@ private fun ActivityNotesBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.82f))
+                        .background(CardWhite.copy(alpha = 0.82f))
                         .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -907,8 +934,7 @@ private fun ActivityNotesBottomSheet(
                         if (noteDraft.isBlank()) {
                             Text(
                                 text = "Share your workout note",
-                                color = TextSecondary,
-                                fontSize = 14.sp
+                                style = LabelLarge.copy(color = TextSecondary)
                             )
                         }
                         BasicTextField(
@@ -917,7 +943,10 @@ private fun ActivityNotesBottomSheet(
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 color = TextPrimary,
-                                fontSize = 14.sp
+                                fontSize = LabelLarge.fontSize,
+                                fontFamily = LabelLarge.fontFamily,
+                                fontWeight = LabelLarge.fontWeight,
+                                lineHeight = LabelLarge.lineHeight
                             ),
                             singleLine = false,
                             maxLines = 3
@@ -940,7 +969,7 @@ private fun ActivityNotesBottomSheet(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send note",
-                            tint = Color.White,
+                            tint = CardWhite,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -972,14 +1001,11 @@ private fun ParticipantNoteRow(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = participant.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                style = HeadingStyle1.copy(fontSize = 18.sp, color = TextPrimary)
             )
             Text(
                 text = note.ifBlank { "No note yet" },
-                fontSize = 14.sp,
-                color = if (note.isBlank()) TextMuted else TextSecondary
+                style = LabelLarge.copy(color = if (note.isBlank()) TextMuted else TextSecondary)
             )
         }
     }
@@ -1018,10 +1044,11 @@ private fun formatNotesCount(count: Int): String {
 }
 
 private fun buildParticipantDisplayAnnotated(participants: List<ActivityParticipant>) = buildAnnotatedString {
-    val names = participants.take(3).map { it.name.trim() }.filter { it.isNotBlank() }
+    val allNames = participants.map { it.name.trim() }.filter { it.isNotBlank() }
+    val names = allNames.take(3)
 
     fun appendBoldName(name: String) {
-        pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold))
+        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
         append(name)
         pop()
     }
@@ -1040,7 +1067,7 @@ private fun buildParticipantDisplayAnnotated(participants: List<ActivityParticip
             appendBoldName(names[0])
             append(", ")
             appendBoldName(names[1])
-            val moreCount = participants.size - 3
+            val moreCount = allNames.size - 3
             if (moreCount > 0) {
                 append(", ")
                 appendBoldName(names[2])
@@ -1050,5 +1077,18 @@ private fun buildParticipantDisplayAnnotated(participants: List<ActivityParticip
                 appendBoldName(names[2])
             }
         }
+    }
+}
+
+private fun String.feedWorkoutChipColor(): Color {
+    return when (trim().lowercase(Locale.US)) {
+        "run" -> ScheduleChipGreen
+        "gym" -> ScheduleChipPurple
+        "yoga" -> ScheduleChipPink
+        "cycle", "cycling" -> ScheduleChipMint
+        "swim", "swimming" -> ScheduleChipBlue
+        "basketball" -> ScheduleChipOrange
+        "hiit" -> ScheduleChipAmber
+        else -> ScheduleChipGray
     }
 }
