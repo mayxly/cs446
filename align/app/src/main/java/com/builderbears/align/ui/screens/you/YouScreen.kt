@@ -342,7 +342,10 @@ fun YouScreen(
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Button(
-                                    onClick = { isEditingName = false },
+                                    onClick = {
+                                        viewModel.updateName(name)
+                                        isEditingName = false
+                                    },
                                     shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = PrimaryBlue,

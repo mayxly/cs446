@@ -241,6 +241,16 @@ class YouViewModel : ViewModel() {
         }
     }
 
+    fun updateName(newName: String) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            userService.updateUser(userId, mapOf("name" to newName))
+                .onSuccess {
+                    _user.value = _user.value?.copy(name = newName)
+                }
+        }
+    }
+
     fun setPushNotificationsEnabled(enabled: Boolean) {
         val userId = auth.currentUser?.uid ?: return
         _pushNotificationsEnabled.value = enabled
