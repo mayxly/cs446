@@ -598,6 +598,7 @@ fun YouScreen(
             onDismiss = {
                 showInbox = false
                 inboxViewModel.loadNotifications()
+                viewModel.refreshFriends()
             },
             inboxViewModel = inboxViewModel
         )

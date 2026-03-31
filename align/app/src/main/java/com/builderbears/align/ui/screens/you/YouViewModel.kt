@@ -80,6 +80,17 @@ class YouViewModel : ViewModel() {
         }
     }
 
+    fun refreshFriends() {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            userService.getUser(userId)
+                .onSuccess { user ->
+                    _friendStatuses.value = user?.friends ?: emptyMap()
+                    loadFriends(user?.friends ?: emptyMap())
+                }
+        }
+    }
+
     private suspend fun loadActivityCounts(userId: String) {
         activityService.getActivities(userId)
             .onSuccess { activities ->
