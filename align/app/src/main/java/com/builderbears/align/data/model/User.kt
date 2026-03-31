@@ -6,5 +6,6 @@ data class User(
     val email: String = "",
     val username: String = "",
     val profilePhotoUrl: String = "",
-    val pushNotificationsEnabled: Boolean = false
+    val pushNotificationsEnabled: Boolean = false,
+    val friends: Map<String, String> = emptyMap()
 )

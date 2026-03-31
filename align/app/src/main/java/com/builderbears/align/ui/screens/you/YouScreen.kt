@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -71,16 +72,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.builderbears.align.data.model.User
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.builderbears.align.data.service.NotificationService
 import com.builderbears.align.ui.theme.AvatarGreen
-import com.builderbears.align.ui.theme.AvatarGreen2
-import com.builderbears.align.ui.theme.AvatarOrange
-import com.builderbears.align.ui.theme.AvatarPink
-import com.builderbears.align.ui.theme.AvatarYellow
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
@@ -105,26 +108,6 @@ import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
 
 
-private data class YouFriend(
-    val name: String,
-    val initial: String,
-    val color: Color,
-    val workouts: Int,
-    val medal: String? = null,
-    val rank: String? = null
-)
-
-private val placeholderFriends = listOf(
-    YouFriend("Alex Kim", "A", AvatarGreen, 32, "\uD83E\uDD47", "1st"),
-    YouFriend("Sam Reyes", "S", AvatarPink, 27, "\uD83E\uDD48", "2nd"),
-    YouFriend("Maya Chen", "M", AvatarOrange, 23, "\uD83E\uDD49", "3rd"),
-    YouFriend("Jordan Park", "J", AvatarYellow, 13),
-    YouFriend("Tiffany Cho", "T", PrimaryBlue, 5),
-    YouFriend("May Ly", "J", AvatarOrange, 4),
-    YouFriend("Paul Parker", "P", AvatarPink, 4),
-    YouFriend("Jennie Park", "J", AvatarGreen2, 0)
-)
-
 private val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 
 @Composable
@@ -144,6 +127,9 @@ fun YouScreen(
     val weeklyMinutes by viewModel.weeklyMinutes.collectAsState()
     val topActivity by viewModel.topActivity.collectAsState()
     val pushNotificationsEnabled by viewModel.pushNotificationsEnabled.collectAsState()
+    val acceptedFriends by viewModel.friends.collectAsState()
+    val friendStatuses by viewModel.friendStatuses.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
 
     // Local UI state
     var name by remember(user) { mutableStateOf(user?.name ?: "Your Name") }
@@ -154,6 +140,7 @@ fun YouScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var showInbox by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showAddFriendDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -591,7 +578,10 @@ fun YouScreen(
         Spacer(Modifier.height(16.dp))
 
         // Friends
-        FriendsCard()
+        FriendsCard(
+            friends = acceptedFriends,
+            onAddFriendClick = { showAddFriendDialog = true }
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -657,6 +647,21 @@ fun YouScreen(
                 }
             }
         }
+    }
+
+    if (showAddFriendDialog) {
+        AddFriendDialog(
+            searchResults = searchResults,
+            friendStatuses = friendStatuses,
+            onSearch = { viewModel.searchUsers(it) },
+            onRequest = { viewModel.sendFriendRequest(it) },
+            onAccept = { viewModel.acceptFriendRequest(it) },
+            onRemove = { viewModel.removeFriend(it) },
+            onDismiss = {
+                showAddFriendDialog = false
+                viewModel.searchUsers("")
+            }
+        )
     }
 }
 
@@ -858,7 +863,7 @@ private fun WeeklyActivityCard(weeklyMinutes: List<Int>) {
 }
 
 @Composable
-private fun FriendsCard() {
+private fun FriendsCard(friends: List<User>, onAddFriendClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -868,53 +873,227 @@ private fun FriendsCard() {
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Friends",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Friends",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Add friend",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = PrimaryBlue,
+                    modifier = Modifier.clickable { onAddFriendClick() }
+                )
+            }
 
-            Spacer(Modifier.height(16.dp))
-
-            placeholderFriends.forEach { friend ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    UserAvatar(
-                        name = friend.name,
-                        size = 40.dp
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = friend.name,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+            if (friends.isEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "No friends yet",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
+            } else {
+                Spacer(Modifier.height(16.dp))
+                friends.forEach { friend ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        UserAvatar(
+                            name = friend.name,
+                            size = 40.dp,
+                            userId = friend.userId,
+                            profilePhotoUrl = friend.profilePhotoUrl.takeIf { it.isNotBlank() }
                         )
-                        Text(
-                            text = "${friend.workouts} workouts this month",
-                            fontSize = 13.sp,
-                            color = TextSecondary
-                        )
-                    }
-
-                    if (friend.medal != null && friend.rank != null) {
-                        Text(
-                            text = "${friend.medal} ${friend.rank}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = friend.name,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "@${friend.username}",
+                                fontSize = 13.sp,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AddFriendDialog(
+    searchResults: List<User>,
+    friendStatuses: Map<String, String>,
+    onSearch: (String) -> Unit,
+    onRequest: (String) -> Unit,
+    onAccept: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.7f),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardWhite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Search bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(InputBackground, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = "Search",
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = {
+                                searchQuery = it
+                                onSearch(it)
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 14.sp,
+                                color = TextPrimary
+                            ),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { innerTextField ->
+                                Box {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search for users",
+                                            fontSize = 14.sp,
+                                            color = TextMuted.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Results list
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(searchResults, key = { it.userId }) { user ->
+                        val status = friendStatuses[user.userId]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            UserAvatar(
+                                name = user.name,
+                                size = 44.dp,
+                                userId = user.userId,
+                                profilePhotoUrl = user.profilePhotoUrl.takeIf { it.isNotBlank() }
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = user.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "@${user.username}",
+                                    fontSize = 13.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            FriendActionButton(
+                                status = status,
+                                onRequest = { onRequest(user.userId) },
+                                onAccept = { onAccept(user.userId) },
+                                onRemove = { onRemove(user.userId) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FriendActionButton(
+    status: String?,
+    onRequest: () -> Unit,
+    onAccept: () -> Unit,
+    onRemove: () -> Unit
+) {
+    when (status) {
+        "ACCEPTED" -> OutlinedButton(
+            onClick = onRemove,
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, DestructiveAction),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text("Unfriend", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DestructiveAction)
+        }
+        "SENT" -> OutlinedButton(
+            onClick = {},
+            enabled = false,
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, BorderLight),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text("Pending", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        }
+        "PENDING" -> Button(
+            onClick = onAccept,
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text("Accept", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+        else -> Button(
+            onClick = onRequest,
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text("Request", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

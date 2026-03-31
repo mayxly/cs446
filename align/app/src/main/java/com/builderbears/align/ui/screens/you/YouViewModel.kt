@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.User
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.FriendService
 import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import java.time.temporal.TemporalAdjusters
 class YouViewModel : ViewModel() {
     private val userService = UserService()
     private val activityService = ActivityService()
+    private val friendService = FriendService()
     private val auth = FirebaseAuth.getInstance()
 
     private val _user = MutableStateFlow<User?>(null)
@@ -47,6 +49,17 @@ class YouViewModel : ViewModel() {
     private val _pushNotificationsEnabled = MutableStateFlow(false)
     val pushNotificationsEnabled: StateFlow<Boolean> = _pushNotificationsEnabled
 
+    // Friends
+    private val _friendStatuses = MutableStateFlow<Map<String, String>>(emptyMap())
+    val friendStatuses: StateFlow<Map<String, String>> = _friendStatuses
+
+    private val _friends = MutableStateFlow<List<User>>(emptyList())
+    val friends: StateFlow<List<User>> = _friends
+
+    private val _allOtherUsers = MutableStateFlow<List<User>>(emptyList())
+    private val _searchResults = MutableStateFlow<List<User>>(emptyList())
+    val searchResults: StateFlow<List<User>> = _searchResults
+
     init {
         loadUserData()
     }
@@ -59,7 +72,10 @@ class YouViewModel : ViewModel() {
                     _user.value = user
                     _profilePhotoUrl.value = user?.profilePhotoUrl?.takeIf { it.isNotBlank() }
                     _pushNotificationsEnabled.value = user?.pushNotificationsEnabled ?: false
+                    _friendStatuses.value = user?.friends ?: emptyMap()
+                    loadFriends(user?.friends ?: emptyMap())
                 }
+            loadAllOtherUsers(userId)
             loadActivityCounts(userId)
         }
     }
@@ -137,6 +153,69 @@ class YouViewModel : ViewModel() {
             "basketball" -> "Basketball"
             "hiit" -> "HIIT"
             else -> workoutType.replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    private suspend fun loadFriends(friendsMap: Map<String, String>) {
+        val acceptedIds = friendsMap.filter { it.value == "ACCEPTED" }.keys.toList()
+        if (acceptedIds.isEmpty()) {
+            _friends.value = emptyList()
+            return
+        }
+        userService.getUsersByIds(acceptedIds)
+            .onSuccess { _friends.value = it }
+    }
+
+    private suspend fun loadAllOtherUsers(currentUserId: String) {
+        userService.getAllUsers()
+            .onSuccess { allUsers ->
+                val others = allUsers.filter { it.userId != currentUserId }
+                _allOtherUsers.value = others
+                _searchResults.value = others
+            }
+    }
+
+    fun searchUsers(query: String) {
+        val all = _allOtherUsers.value
+        _searchResults.value = if (query.isBlank()) {
+            all
+        } else {
+            all.filter { user ->
+                user.username.contains(query.lowercase()) ||
+                    user.name.lowercase().contains(query.lowercase())
+            }
+        }
+    }
+
+    fun sendFriendRequest(toUserId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            friendService.sendRequest(currentUserId, toUserId)
+                .onSuccess {
+                    _friendStatuses.value = _friendStatuses.value + (toUserId to "SENT")
+                }
+        }
+    }
+
+    fun acceptFriendRequest(fromUserId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            friendService.acceptRequest(currentUserId, fromUserId)
+                .onSuccess {
+                    _friendStatuses.value = _friendStatuses.value + (fromUserId to "ACCEPTED")
+                    loadFriends(_friendStatuses.value)
+                }
+        }
+    }
+
+    fun removeFriend(otherUserId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            friendService.removeFriend(currentUserId, otherUserId)
+                .onSuccess {
+                    _friendStatuses.value = _friendStatuses.value - otherUserId
+                    _friends.value = _friends.value.filter { it.userId != otherUserId }
+                }
         }
     }
 
