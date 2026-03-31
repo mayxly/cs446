@@ -21,7 +21,6 @@ import com.builderbears.align.ui.theme.ScheduleChipMint
 import com.builderbears.align.ui.theme.ScheduleChipOrange
 import com.builderbears.align.ui.theme.ScheduleChipPink
 import com.builderbears.align.ui.theme.ScheduleChipPurple
-import com.builderbears.align.ui.utils.userColorForId
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -209,14 +208,9 @@ class ScheduleViewModel : ViewModel() {
 
 			val attendees = activity.participants.map { participant ->
 				Attendee(
-					initials = participant.name
-						.split(" ")
-						.filter { it.isNotBlank() }
-						.take(2)
-						.joinToString("") { it.first().uppercase() }
-						.ifBlank { "U" },
 					name = participant.name,
-					color = userColorForId(participant.userId)
+					userId = participant.userId,
+					profilePhotoUrl = participant.profilePhotoUrl
 				)
 			}
 

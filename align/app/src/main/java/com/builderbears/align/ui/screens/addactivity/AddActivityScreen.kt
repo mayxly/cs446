@@ -76,6 +76,7 @@ import androidx.navigation.NavController
 import com.builderbears.align.data.model.User
 import com.builderbears.align.ui.navigation.Route
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -98,7 +99,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 
-data class Friend(val id: String, val name: String, val handle: String, val initials: String, val color: Color)
+data class Friend(val id: String, val name: String, val handle: String, val profilePhotoUrl: String = "")
 
 private val workoutTypes = listOf(
     "Run" to "🏃", "Gym" to "🏋️", "Yoga" to "🧘", "Cycle" to "🚴",
@@ -1016,22 +1017,13 @@ private fun parseDisplayAddress(fullText: String, primaryText: String): String {
 
 private fun User.toFriend(): Friend {
     val normalizedName = name.ifBlank { email.ifBlank { "User" } }
-    val initials = normalizedName
-        .trim()
-        .split(" ")
-        .filter { it.isNotBlank() }
-        .take(2)
-        .joinToString("") { it.first().uppercase() }
-        .ifBlank { "U" }
-
-    val handle = if (email.isNotBlank()) email else "@${normalizedName.lowercase().replace(" ", "")}" 
+    val handle = if (email.isNotBlank()) email else "@${normalizedName.lowercase().replace(" ", "")}"
 
     return Friend(
         id = userId,
         name = normalizedName,
         handle = handle,
-        initials = initials,
-        color = userColorForId(userId)
+        profilePhotoUrl = profilePhotoUrl
     )
 }
 
@@ -1124,15 +1116,12 @@ private fun FriendRow(friend: Friend, isSelected: Boolean, onClick: () -> Unit) 
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(friend.color),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(friend.initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+            UserAvatar(
+                name = friend.name,
+                size = 40.dp,
+                userId = friend.id,
+                profilePhotoUrl = friend.profilePhotoUrl.takeIf { it.isNotBlank() }
+            )
 
             Spacer(Modifier.width(12.dp))
 

@@ -55,6 +55,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -263,21 +264,12 @@ private fun ActivityCard(
                 verticalAlignment = Alignment.Top
             ) {
                 // Profile photo with border
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .border(2.dp, Color(0xFFD8D8D8), CircleShape)
-                        .clip(CircleShape)
-                        .background(getColorForUserId(activity.primaryParticipantId())),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = activity.primaryParticipantName().take(1).uppercase(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+                UserAvatar(
+                    name = activity.primaryParticipantName(),
+                    size = 40.dp,
+                    userId = activity.primaryParticipantId(),
+                    profilePhotoUrl = activity.primaryParticipantPhotoUrl()
+                )
 
                 // User name and date/time
                 Column(modifier = Modifier.weight(1f)) {
@@ -389,24 +381,16 @@ private fun ActivityMembers(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // Member pfps
-        Box(modifier = Modifier.height(20.dp)) {
+        Box {
             Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
                 participants.forEach { participant ->
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .border(1.dp, Color(0xFFD8D8D8), CircleShape)
-                            .clip(CircleShape)
-                            .background(color = getColorForUserId(participant.userId)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = participant.name.take(1).uppercase(),
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
+                    UserAvatar(
+                        name = participant.name,
+                        size = 20.dp,
+                        userId = participant.userId,
+                        profilePhotoUrl = participant.profilePhotoUrl.takeIf { it.isNotBlank() },
+                        showShadow = false
+                    )
                 }
             }
         }
@@ -441,6 +425,10 @@ private fun Activity.primaryParticipantName(): String {
 
 private fun Activity.primaryParticipantId(): String {
     return participants.firstOrNull()?.userId ?: ""
+}
+
+private fun Activity.primaryParticipantPhotoUrl(): String? {
+    return participants.firstOrNull()?.profilePhotoUrl?.takeIf { it.isNotBlank() }
 }
 
 @Composable

@@ -2,7 +2,8 @@ package com.builderbears.align.data.model
 
 data class ActivityParticipant(
     val userId: String = "",
-    val name: String = ""
+    val name: String = "",
+    val profilePhotoUrl: String = ""
 )
 
 data class Activity (

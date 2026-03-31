@@ -319,14 +319,15 @@ class AddActivityViewModel : ViewModel() {
 
             val selectedInvitees = availableUsers
                 .filter { it.userId in invitedUserIds }
-                .map { ActivityParticipant(userId = it.userId, name = it.name) }
+                .map { ActivityParticipant(userId = it.userId, name = it.name, profilePhotoUrl = it.profilePhotoUrl) }
 
             val currentUser = availableUsers.firstOrNull { it.userId == currentUserId }
                 ?: userService.getUser(currentUserId).getOrNull()
 
             val currentParticipant = ActivityParticipant(
                 userId = currentUserId,
-                name = currentUser?.name ?: "You"
+                name = currentUser?.name ?: "You",
+                profilePhotoUrl = currentUser?.profilePhotoUrl ?: ""
             )
 
             val participants = (selectedInvitees + currentParticipant)
@@ -439,14 +440,15 @@ class AddActivityViewModel : ViewModel() {
 
             val selectedInvitees = availableUsers
                 .filter { it.userId in invitedUserIds }
-                .map { ActivityParticipant(userId = it.userId, name = it.name) }
+                .map { ActivityParticipant(userId = it.userId, name = it.name, profilePhotoUrl = it.profilePhotoUrl) }
 
             val currentUser = availableUsers.firstOrNull { it.userId == currentUserId }
                 ?: userService.getUser(currentUserId).getOrNull()
 
             val currentParticipant = ActivityParticipant(
                 userId = currentUserId,
-                name = currentUser?.name ?: "You"
+                name = currentUser?.name ?: "You",
+                profilePhotoUrl = currentUser?.profilePhotoUrl ?: ""
             )
 
             val participants = (selectedInvitees + currentParticipant)

@@ -1,7 +1,5 @@
 package com.builderbears.align.ui.screens.you
 
-import android.graphics.BitmapFactory
-import android.net.Uri
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +50,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,8 +62,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -74,6 +71,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.builderbears.align.data.service.NotificationService
 import com.builderbears.align.ui.theme.AvatarGreen
 import com.builderbears.align.ui.theme.AvatarGreen2
@@ -81,6 +80,7 @@ import com.builderbears.align.ui.theme.AvatarOrange
 import com.builderbears.align.ui.theme.AvatarPink
 import com.builderbears.align.ui.theme.AvatarYellow
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
 import com.builderbears.align.ui.theme.CardWhite
@@ -126,15 +126,19 @@ fun YouScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // State
-    var name by remember { mutableStateOf("Your Name") }
+    // ViewModel state
+    val user by viewModel.user.collectAsState()
+    val profilePhotoUrl by viewModel.profilePhotoUrl.collectAsState()
+    val isUploadingPhoto by viewModel.isUploadingPhoto.collectAsState()
+
+    // Local UI state
+    var name by remember(user) { mutableStateOf(user?.name ?: "Your Name") }
     var isEditingName by remember { mutableStateOf(false) }
     var showPasswordFields by remember { mutableStateOf(false) }
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var pushNotificationsEnabled by remember { mutableStateOf(true) }
-    var profileImageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showInbox by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -146,17 +150,8 @@ fun YouScreen(
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                val inputStream = context.contentResolver.openInputStream(it)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-                if (bitmap != null) {
-                    profileImageBitmap = bitmap.asImageBitmap()
-                }
-            } catch (_: Exception) { }
-        }
+    ) { uri ->
+        uri?.let { viewModel.uploadProfilePhoto(it) }
     }
 
     Column(
@@ -269,16 +264,7 @@ fun YouScreen(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (profileImageBitmap != null) {
-                            Image(
-                                bitmap = profileImageBitmap!!,
-                                contentDescription = "Profile photo",
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
+                        if (isUploadingPhoto) {
                             Box(
                                 modifier = Modifier
                                     .size(64.dp)
@@ -286,13 +272,19 @@ fun YouScreen(
                                     .background(AvatarGreen),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = name.firstOrNull()?.uppercase() ?: "Y",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary.copy(alpha = 0.6f)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = PrimaryBlue,
+                                    strokeWidth = 2.dp
                                 )
                             }
+                        } else {
+                            UserAvatar(
+                                name = name,
+                                size = 64.dp,
+                                userId = user?.userId ?: "",
+                                profilePhotoUrl = profilePhotoUrl
+                            )
                         }
                         // Camera icon overlay
                         Box(
@@ -379,7 +371,7 @@ fun YouScreen(
                             }
                         }
                         Text(
-                            text = "@yourhandle",
+                            text = "@${user?.username ?: "yourhandle"}",
                             fontSize = 13.sp,
                             color = TextSecondary,
                             modifier = Modifier.padding(top = 2.dp)
@@ -749,20 +741,10 @@ private fun StatsRow() {
                 verticalArrangement = Arrangement.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(AvatarPink),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "S",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
+                    UserAvatar(
+                        name = "Sam Reyes",
+                        size = 28.dp
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Sam Reyes",
@@ -881,20 +863,10 @@ private fun FriendsCard() {
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(friend.color),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = friend.initial,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    }
+                    UserAvatar(
+                        name = friend.name,
+                        size = 40.dp
+                    )
 
                     Spacer(Modifier.width(12.dp))
 
