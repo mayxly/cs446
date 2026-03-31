@@ -35,6 +35,8 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
@@ -919,43 +921,48 @@ private fun FriendsCard() {
 
 @Composable
 private fun DevToolsCard(context: android.content.Context) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { expanded = !expanded }
+        ) {
             Text(
                 text = "Dev Tools",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = "Tap to fire a test notification",
                 fontSize = 12.sp,
-                color = TextSecondary
+                color = TextMuted
             )
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp
+                    else Icons.Outlined.KeyboardArrowDown,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = TextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
 
-            Spacer(Modifier.height(12.dp))
-
-            DevToolButton("Test Friend Request") {
-                NotificationService.showFriendRequestNotification(context)
-            }
-            Spacer(Modifier.height(8.dp))
-            DevToolButton("Test Workout Invite") {
-                NotificationService.showWorkoutInviteNotification(context)
-            }
-            Spacer(Modifier.height(8.dp))
-            DevToolButton("Test Workout Reminder") {
-                NotificationService.showWorkoutReminderNotification(context)
-            }
-            Spacer(Modifier.height(8.dp))
-            DevToolButton("Test App Reminder") {
-                NotificationService.showAppReminderNotification(context)
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                DevToolButton("Test Friend Request") {
+                    NotificationService.showFriendRequestNotification(context)
+                }
+                Spacer(Modifier.height(6.dp))
+                DevToolButton("Test Workout Invite") {
+                    NotificationService.showWorkoutInviteNotification(context)
+                }
+                Spacer(Modifier.height(6.dp))
+                DevToolButton("Test Workout Reminder") {
+                    NotificationService.showWorkoutReminderNotification(context)
+                }
+                Spacer(Modifier.height(6.dp))
+                DevToolButton("Test App Reminder") {
+                    NotificationService.showAppReminderNotification(context)
+                }
             }
         }
     }
