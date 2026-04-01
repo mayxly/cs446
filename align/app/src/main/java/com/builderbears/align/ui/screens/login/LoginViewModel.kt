@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.service.UserService
 import com.builderbears.align.ui.components.LoginMode
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class LoginViewModel : ViewModel() {
     private val userService = UserService()
@@ -25,6 +28,12 @@ class LoginViewModel : ViewModel() {
     var authMode by mutableStateOf(LoginMode.LOGIN)
     var errorMessage by mutableStateOf<String?>(null)
     var isLoading by mutableStateOf(false)
+
+    private suspend fun saveFcmToken() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val token = runCatching { FirebaseMessaging.getInstance().token.await() }.getOrNull() ?: return
+        userService.updateUser(userId, mapOf("fcmToken" to token))
+    }
 
     private fun clearFields() {
         emailOrUsername = ""
@@ -50,6 +59,7 @@ class LoginViewModel : ViewModel() {
             userService.loginUser(emailOrUsername, password)
                 .onSuccess { userId ->
                     userService.migrateUsernameIfMissing(userId)
+                    saveFcmToken()
                     clearFields()
                     onSuccess()
                 }
@@ -77,6 +87,7 @@ class LoginViewModel : ViewModel() {
             isLoading = true
             userService.createUser(displayName, email, password, username)
                 .onSuccess {
+                    saveFcmToken()
                     clearFields()
                     onSuccess()
                 }
