@@ -116,7 +116,7 @@ private val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 fun YouScreen(
     onLogout: () -> Unit,
     viewModel: YouViewModel = viewModel(),
-    inboxViewModel: InboxViewModel = viewModel()
+    inboxViewModel: InboxViewModel
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -626,7 +626,6 @@ fun YouScreen(
         InboxScreen(
             onDismiss = {
                 showInbox = false
-                inboxViewModel.loadNotifications()
                 viewModel.refreshFriends()
             },
             onFriendAccepted = {

@@ -1,5 +1,6 @@
 package com.builderbears.align.ui.screens.you
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.AppNotification
@@ -8,6 +9,7 @@ import com.builderbears.align.data.service.InboxService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class InboxViewModel : ViewModel() {
@@ -22,14 +24,15 @@ class InboxViewModel : ViewModel() {
     val unreadCount: StateFlow<Int> = _unreadCount
 
     init {
-        loadNotifications()
+        startListening()
     }
 
-    fun loadNotifications() {
+    private fun startListening() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            inboxService.getNotifications(userId)
-                .onSuccess { list ->
+            inboxService.getNotificationsFlow(userId)
+                .catch { e -> Log.e("InboxViewModel", "Listener error", e) }
+                .collect { list ->
                     _notifications.value = list
                     _unreadCount.value = list.count { !it.read }
                 }

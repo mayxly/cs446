@@ -36,7 +36,9 @@ import com.builderbears.align.ui.screens.forgotpassword.ForgotPasswordScreen
 import com.builderbears.align.ui.screens.loading.LoadingScreen
 import com.builderbears.align.ui.screens.login.LoginScreen
 import com.builderbears.align.ui.screens.schedule.ScheduleScreen
+import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.screens.you.YouScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.ui.theme.NavBarBackground
 import com.builderbears.align.ui.theme.NavBarHighlight
 import com.builderbears.align.ui.theme.NavBarSelected
@@ -117,6 +119,7 @@ fun AlignApp() {
             val navController = rememberNavController()
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
+            val inboxViewModel: InboxViewModel = viewModel(key = currentUserId)
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
@@ -127,11 +130,11 @@ fun AlignApp() {
                         navController = navController,
                         startDestination = Route.Feed.path
                     ) {
-                        composable(Route.AddActivity.path) { AddActivityScreen(navController) }
-                        composable(Route.Feed.path) { FeedScreen() }
-                        composable(Route.Schedule.path) { ScheduleScreen() }
+                        composable(Route.AddActivity.path) { AddActivityScreen(navController, inboxViewModel = inboxViewModel) }
+                        composable(Route.Feed.path) { FeedScreen(inboxViewModel = inboxViewModel) }
+                        composable(Route.Schedule.path) { ScheduleScreen(inboxViewModel = inboxViewModel) }
                         composable(Route.You.path) {
-                            YouScreen(onLogout = { appState = AppState.LOGIN })
+                            YouScreen(onLogout = { appState = AppState.LOGIN }, inboxViewModel = inboxViewModel)
                         }
                     }
                 }

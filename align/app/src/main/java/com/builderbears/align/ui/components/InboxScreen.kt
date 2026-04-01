@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.builderbears.align.data.model.AppNotification
 import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.theme.CardWhite
@@ -74,7 +73,7 @@ import com.builderbears.align.ui.theme.TextSecondary
 fun InboxScreen(
     onDismiss: () -> Unit,
     onFriendAccepted: () -> Unit = {},
-    inboxViewModel: InboxViewModel = viewModel()
+    inboxViewModel: InboxViewModel
 ) {
     val notifications by inboxViewModel.notifications.collectAsState()
     var isVisible by remember { mutableStateOf(true) }

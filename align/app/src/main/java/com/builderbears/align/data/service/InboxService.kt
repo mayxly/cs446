@@ -3,6 +3,9 @@ package com.builderbears.align.data.service
 import com.builderbears.align.data.model.AppNotification
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class InboxService {
@@ -10,6 +13,19 @@ class InboxService {
 
     private fun notificationsCollection(userId: String) =
         db.collection("users").document(userId).collection("notifications")
+
+    fun getNotificationsFlow(userId: String): Flow<List<AppNotification>> = callbackFlow {
+        val registration = notificationsCollection(userId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObjects(AppNotification::class.java) ?: emptyList())
+            }
+        awaitClose { registration.remove() }
+    }
 
     suspend fun getNotifications(userId: String): Result<List<AppNotification>> {
         return try {

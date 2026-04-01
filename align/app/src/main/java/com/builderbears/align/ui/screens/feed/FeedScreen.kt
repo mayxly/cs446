@@ -116,7 +116,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxViewModel = viewModel()) {
+fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxViewModel) {
     val activities by viewModel.activities.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -329,7 +329,6 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxView
         InboxScreen(
             onDismiss = {
                 showInbox = false
-                inboxViewModel.loadNotifications()
             },
             inboxViewModel = inboxViewModel
         )

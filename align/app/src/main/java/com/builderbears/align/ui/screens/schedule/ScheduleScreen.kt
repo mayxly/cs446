@@ -100,7 +100,7 @@ import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
 @Composable
 fun ScheduleScreen(
     viewModel: ScheduleViewModel = viewModel(),
-    inboxViewModel: InboxViewModel = viewModel()
+    inboxViewModel: InboxViewModel
 ) {
     val uiState = viewModel.uiState
     val context = LocalContext.current
@@ -255,7 +255,6 @@ fun ScheduleScreen(
         InboxScreen(
             onDismiss = {
                 showInbox = false
-                inboxViewModel.loadNotifications()
             },
             inboxViewModel = inboxViewModel
         )
@@ -280,7 +279,8 @@ fun ScheduleScreen(
                     onDismissRequest = {
                         editingActivityId = null
                         viewModel.reload()
-                    }
+                    },
+                    inboxViewModel = inboxViewModel
                 )
             }
         }
