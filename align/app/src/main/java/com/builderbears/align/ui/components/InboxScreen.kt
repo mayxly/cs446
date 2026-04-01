@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -53,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.builderbears.align.data.model.AppNotification
+import com.builderbears.align.data.model.NotificationType
 import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.ui.theme.CardWhite
 import com.builderbears.align.ui.theme.DisplayStyle
@@ -84,25 +88,18 @@ fun InboxScreen(
         },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable {
-                    isVisible = false
-                    onDismiss()
-                }
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = isVisible,
                 enter = slideInHorizontally(initialOffsetX = { it }),
                 exit = slideOutHorizontally(targetOffsetX = { it }),
-                modifier = Modifier.align(Alignment.CenterEnd)
+                modifier = Modifier.fillMaxSize()
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize(0.95f)
-                        .clickable(enabled = false) {}
+                        .fillMaxSize()
+                        .background(Color.White)
+                        .clickable { }
                         .drawBehind {
                             val w = size.width
                             val h = size.height
@@ -141,7 +138,6 @@ fun InboxScreen(
                                 size = size
                             )
                         }
-                        .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Header
@@ -169,43 +165,63 @@ fun InboxScreen(
                             }
                         }
 
-                        if (notifications.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.TopCenter
-                            ) {
-                                Text(
-                                    text = "No notifications yet",
-                                    fontSize = 14.sp,
-                                    color = TextSecondary
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(0.dp)
-                            ) {
-                                items(notifications, key = { it.id }) { notification ->
-                                    NotificationItem(
-                                        notification = notification,
-                                        onClick = {
-                                            if (!notification.read) {
-                                                inboxViewModel.markAsRead(notification.id)
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (notifications.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    Text(
+                                        text = "No notifications yet",
+                                        fontSize = 14.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                                ) {
+                                    items(notifications, key = { it.id }) { notification ->
+                                        NotificationItem(
+                                            notification = notification,
+                                            onClick = {
+                                                if (!notification.read) {
+                                                    inboxViewModel.markAsRead(notification.id)
+                                                }
+                                            },
+                                            onAccept = {
+                                                if (notification.type == NotificationType.FRIEND_REQUEST) {
+                                                    inboxViewModel.acceptFriendRequest(notification)
+                                                }
+                                            },
+                                            onDecline = {
+                                                if (notification.type == NotificationType.FRIEND_REQUEST) {
+                                                    inboxViewModel.declineFriendRequest(notification)
+                                                }
                                             }
-                                        },
-                                        onAccept = {
-                                            if (notification.type == "friend_request") {
-                                                inboxViewModel.acceptFriendRequest(notification)
-                                            }
-                                        },
-                                        onDecline = {
-                                            if (notification.type == "friend_request") {
-                                                inboxViewModel.declineFriendRequest(notification)
+                                        )
+                                    }
+                                    if (notifications.isNotEmpty()) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                contentAlignment = Alignment.CenterStart
+                                            ) {
+                                                TextButton(onClick = { inboxViewModel.clearAll() }) {
+                                                    Text(
+                                                        text = "Clear",
+                                                        color = TextMuted,
+                                                        fontSize = 13.sp
+                                                    )
+                                                }
                                             }
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -280,7 +296,7 @@ private fun NotificationItem(
                 )
 
                 // Action buttons for friend requests
-                if (notification.type == "friend_request" && !notification.read) {
+                if (notification.type == NotificationType.FRIEND_REQUEST && !notification.read) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),

@@ -12,6 +12,7 @@ object NotificationService {
     private const val CHANNEL_WORKOUT_INVITES = "workout_invites"
     private const val CHANNEL_WORKOUT_REMINDERS = "workout_reminders"
     private const val CHANNEL_APP_REMINDERS = "app_reminders"
+    private const val CHANNEL_ACTIVITY_UPDATES = "activity_updates"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -39,7 +40,13 @@ object NotificationService {
                 CHANNEL_APP_REMINDERS,
                 "App Reminders",
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply { description = "Reminders to log your activity" }
+            ).apply { description = "Reminders to log your activity" },
+
+            NotificationChannel(
+                CHANNEL_ACTIVITY_UPDATES,
+                "Activity Updates",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Notifications for reactions, notes, and photos on your workouts" }
         )
 
         manager.createNotificationChannels(channels)
@@ -65,13 +72,28 @@ object NotificationService {
         )
     }
 
-    fun showWorkoutReminderNotification(context: Context, workoutName: String = "Yoga", minutesUntil: Int = 30) {
+    fun showWorkoutReminderNotification(
+        context: Context,
+        workoutName: String = "Yoga",
+        minutesUntil: Int = 30,
+        messageOverride: String? = null
+    ) {
         show(
             context,
             id = 1003,
             channel = CHANNEL_WORKOUT_REMINDERS,
             title = "Upcoming Workout",
-            body = "$workoutName starts in $minutesUntil minutes"
+            body = messageOverride ?: "$workoutName starts in $minutesUntil minutes"
+        )
+    }
+
+    fun showActivityUpdateNotification(context: Context, title: String, body: String) {
+        show(
+            context,
+            id = 1005,
+            channel = CHANNEL_ACTIVITY_UPDATES,
+            title = title,
+            body = body
         )
     }
 

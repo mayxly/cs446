@@ -68,4 +68,16 @@ class InboxService {
             Result.failure(e)
         }
     }
+
+    suspend fun clearAll(userId: String): Result<Unit> {
+        return try {
+            val docs = notificationsCollection(userId).get().await()
+            val batch = db.batch()
+            docs.documents.forEach { batch.delete(it.reference) }
+            if (docs.documents.isNotEmpty()) batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

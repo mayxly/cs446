@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -78,6 +79,7 @@ import com.builderbears.align.data.model.User
 import com.builderbears.align.ui.navigation.Route
 import com.builderbears.align.ui.components.InboxScreen
 import com.builderbears.align.ui.screens.you.InboxViewModel
+import com.builderbears.align.data.service.ActivityReminderScheduler
 import com.builderbears.align.ui.components.UserAvatar
 import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.theme.BorderLight
@@ -205,6 +207,8 @@ fun AddActivityScreen(
 
     LaunchedEffect(viewModel.saveSuccess) {
         if (viewModel.saveSuccess) {
+            ActivityReminderScheduler.syncForCurrentUser(context.applicationContext)
+
             activityName = ""
             selectedDate = null
             selectedHour = 2
@@ -309,12 +313,13 @@ fun AddActivityScreen(
                     size = size
                 )
             }
+                .statusBarsPadding()
                 .verticalScroll(scrollState, enabled = !isFriendListInteracting)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -387,8 +392,11 @@ fun AddActivityScreen(
                 Column {
                     Text("Date", fontSize = 11.sp, color = TextSecondary)
                     Text(
-                        text = selectedDate?.format(DateTimeFormatter.ofPattern("MMMM d'th', yyyy"))
-                            ?: "Select a date",
+                        text = selectedDate?.let {
+                            val month = it.format(DateTimeFormatter.ofPattern("MMMM"))
+                            val year = it.year
+                            "$month ${it.dayOfMonth}${ordinalSuffix(it.dayOfMonth)}, $year"
+                        } ?: "Select a date",
                         color = if (selectedDate != null) TextPrimary else TextSecondary,
                         fontSize = 15.sp
                     )
@@ -865,6 +873,14 @@ fun AddActivityScreen(
             inboxViewModel = inboxViewModel
         )
     }
+}
+
+private fun ordinalSuffix(day: Int): String = when {
+    day in 11..13 -> "th"
+    day % 10 == 1 -> "st"
+    day % 10 == 2 -> "nd"
+    day % 10 == 3 -> "rd"
+    else -> "th"
 }
 
 private data class PickerTime(

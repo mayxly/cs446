@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -178,10 +179,11 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxView
                     size = size
                 )
             }
+            .statusBarsPadding()
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 10.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -265,7 +267,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxView
                             currentUserId = currentUserId,
                             isUploading = activity.activityId in uploadingActivityIds,
                             onReactionClick = { emoji ->
-                                if (!canEdit) return@ActivityCard
+                                if (currentUserId.isBlank()) return@ActivityCard
                                 val hasReacted = activity.reactions[emoji]?.contains(currentUserId) == true
                                 if (hasReacted) {
                                     viewModel.removeReaction(activity.activityId, emoji)

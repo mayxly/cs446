@@ -63,6 +63,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.android.libraries.places:places:3.5.0")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.room.runtime.android)
     implementation(libs.androidx.animation.core.android)

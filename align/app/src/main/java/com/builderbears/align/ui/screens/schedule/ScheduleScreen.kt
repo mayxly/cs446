@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,7 +25,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,9 +62,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
+import com.builderbears.align.data.service.ActivityReminderScheduler
 import com.builderbears.align.ui.components.InboxScreen
+import com.builderbears.align.ui.components.NotificationButton
 import com.builderbears.align.ui.components.UserAvatar
-import com.builderbears.align.ui.components.NotificationCountBadge
 import com.builderbears.align.ui.screens.you.InboxViewModel
 import com.builderbears.align.data.model.Attendee
 import com.builderbears.align.data.model.MonthGroup
@@ -113,6 +113,7 @@ fun ScheduleScreen(
     // Refresh immediately on entering the screen to avoid showing stale data.
     LaunchedEffect(Unit) {
         viewModel.reload()
+        ActivityReminderScheduler.syncForCurrentUser(context.applicationContext)
     }
 
     LaunchedEffect(viewModel.actionError) {
@@ -124,6 +125,7 @@ fun ScheduleScreen(
     LaunchedEffect(viewModel.actionMessage) {
         val message = viewModel.actionMessage ?: return@LaunchedEffect
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        ActivityReminderScheduler.syncForCurrentUser(context.applicationContext)
         viewModel.consumeActionMessage()
     }
 
@@ -150,12 +152,13 @@ fun ScheduleScreen(
                     )
                 }
             }
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -163,33 +166,7 @@ fun ScheduleScreen(
                 text = "Upcoming",
                 style = DisplayStyle.copy(fontSize = 28.sp, color = TextPrimary)
             )
-            Box {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = CardWhite,
-                    shadowElevation = 2.dp,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clickable { showInbox = true }
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Icon(
-                            Icons.Outlined.Notifications,
-                            contentDescription = "Inbox",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                if (unreadCount > 0) {
-                    NotificationCountBadge(
-                        count = unreadCount,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 4.dp, y = (-4).dp)
-                    )
-                }
-            }
+            NotificationButton(onClick = { showInbox = true }, unreadCount = unreadCount)
         }
 
         HorizontalDivider(

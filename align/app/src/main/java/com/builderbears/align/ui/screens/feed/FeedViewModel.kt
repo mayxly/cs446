@@ -5,7 +5,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.data.model.AppNotification
+import com.builderbears.align.data.model.NotificationType
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.InboxService
 import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +25,7 @@ private const val TAG = "FeedViewModel"
 class FeedViewModel : ViewModel() {
     private val activityService = ActivityService()
     private val userService = UserService()
+    private val inboxService = InboxService()
     private val auth = FirebaseAuth.getInstance()
 
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
@@ -100,7 +104,8 @@ class FeedViewModel : ViewModel() {
             if (!activity.participantIds.contains(userId)) return@launch
 
             _uploadingActivityIds.value = _uploadingActivityIds.value + activityId
-            activityService.addActivityPhoto(activityId, activity.participantIds, imageUri)
+            val result = activityService.addActivityPhoto(activityId, activity.participantIds, imageUri)
+            result
                 .onSuccess { url ->
                     val list = _activities.value.toMutableList()
                     val idx = list.indexOfFirst { it.activityId == activityId }
@@ -108,6 +113,15 @@ class FeedViewModel : ViewModel() {
                         list[idx] = list[idx].copy(imageUrls = list[idx].imageUrls + url)
                         _activities.value = list
                     }
+
+                    val actorName = currentUserName(userId)
+                    notifyParticipants(
+                        activity = activity,
+                        actorUserId = userId,
+                        actorName = actorName,
+                        type = NotificationType.PARTICIPANT_IMAGE,
+                        message = "added a new photo to ${activity.name.ifBlank { "a workout" }}"
+                    )
                 }
                 .onFailure { exception ->
                     Log.e(TAG, "Failed to upload photo for activity $activityId", exception)
@@ -162,7 +176,8 @@ class FeedViewModel : ViewModel() {
             if (!activity.participantIds.contains(userId)) return@launch
             if (!activity.participantNotes[userId].isNullOrBlank()) return@launch
 
-            activityService.addParticipantNote(activityId, activity.participantIds, userId, trimmedNote)
+            val result = activityService.addParticipantNote(activityId, activity.participantIds, userId, trimmedNote)
+            result
                 .onSuccess {
                     val updated = _activities.value.map { existing ->
                         if (existing.activityId == activityId) {
@@ -172,6 +187,15 @@ class FeedViewModel : ViewModel() {
                         }
                     }
                     _activities.value = updated
+
+                    val actorName = currentUserName(userId)
+                    notifyParticipants(
+                        activity = activity,
+                        actorUserId = userId,
+                        actorName = actorName,
+                        type = NotificationType.PARTICIPANT_NOTE,
+                        message = "added a note on ${activity.name.ifBlank { "a workout" }}"
+                    )
                 }
                 .onFailure { exception ->
                     Log.e(TAG, "Failed to submit note for activity $activityId", exception)
@@ -196,7 +220,21 @@ class FeedViewModel : ViewModel() {
                     _activities.value = currentActivities.sortedByDescending {
                         it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN
                     }
+
                     activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
+                        .onSuccess {
+                            val actorName = currentUserName(userId)
+                            notifyParticipants(
+                                activity = activity,
+                                actorUserId = userId,
+                                actorName = actorName,
+                                type = NotificationType.REACTION,
+                                message = "reacted $emoji to ${activity.name.ifBlank { "a workout" }}"
+                            )
+                        }
+                        .onFailure { exception ->
+                            Log.e(TAG, "Failed to add reaction for activity $activityId", exception)
+                        }
                 }
             }
         }
@@ -223,6 +261,37 @@ class FeedViewModel : ViewModel() {
                     it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN
                 }
                 activityService.updateActivity(activityId, activity.participantIds, mapOf("reactions" to reactions))
+            }
+        }
+    }
+
+    private suspend fun currentUserName(userId: String): String {
+        return userService.getUser(userId).getOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Someone"
+    }
+
+    private suspend fun notifyParticipants(
+        activity: Activity,
+        actorUserId: String,
+        actorName: String,
+        type: String,
+        message: String
+    ) {
+        val recipients = activity.participantIds
+            .distinct()
+            .filter { it.isNotBlank() && it != actorUserId }
+
+        recipients.forEach { recipientId ->
+            inboxService.createNotification(
+                recipientId,
+                AppNotification(
+                    type = type,
+                    fromUserId = actorUserId,
+                    fromUserName = actorName,
+                    message = message,
+                    timestamp = System.currentTimeMillis()
+                )
+            ).onFailure { exception ->
+                Log.w(TAG, "Failed to notify participant=$recipientId for activity=${activity.activityId}", exception)
             }
         }
     }
