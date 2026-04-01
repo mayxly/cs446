@@ -8,6 +8,7 @@ import com.builderbears.align.data.model.User
 import com.builderbears.align.data.service.ActivityService
 import com.builderbears.align.data.service.FriendService
 import com.builderbears.align.data.service.UserService
+import com.builderbears.align.ui.utils.WorkoutTypeCatalog
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -134,7 +135,7 @@ class YouViewModel : ViewModel() {
 
                 // Top activity type of all time
                 _topActivity.value = completedActivities
-                    .groupingBy { it.workoutType.lowercase() }
+                    .groupingBy { WorkoutTypeCatalog.key(it.workoutType) }
                     .eachCount()
                     .maxByOrNull { it.value }
                     ?.key
@@ -142,38 +143,11 @@ class YouViewModel : ViewModel() {
     }
 
     companion object {
-        fun workoutMinutes(workoutType: String): Int = when (workoutType.lowercase()) {
-            "run" -> 30
-            "gym" -> 120
-            "yoga" -> 60
-            "cycle" -> 90
-            "swim" -> 60
-            "basketball" -> 120
-            "hiit" -> 60
-            else -> 60
-        }
+        fun workoutMinutes(workoutType: String): Int = WorkoutTypeCatalog.estimatedMinutes(workoutType)
 
-        fun workoutEmoji(workoutType: String): String = when (workoutType.lowercase()) {
-            "run" -> "\uD83C\uDFC3"
-            "gym" -> "\uD83C\uDFCB\uFE0F"
-            "yoga" -> "\uD83E\uDDD8"
-            "cycle" -> "\uD83D\uDEB4"
-            "swim" -> "\uD83C\uDFCA"
-            "basketball" -> "\uD83C\uDFC0"
-            "hiit" -> "\uD83D\uDD25"
-            else -> "\u2728"
-        }
+        fun workoutEmoji(workoutType: String): String = WorkoutTypeCatalog.emoji(workoutType)
 
-        fun workoutLabel(workoutType: String): String = when (workoutType.lowercase()) {
-            "run" -> "Run"
-            "gym" -> "Gym"
-            "yoga" -> "Yoga"
-            "cycle" -> "Cycle"
-            "swim" -> "Swim"
-            "basketball" -> "Basketball"
-            "hiit" -> "HIIT"
-            else -> workoutType.replaceFirstChar { it.uppercase() }
-        }
+        fun workoutLabel(workoutType: String): String = WorkoutTypeCatalog.displayLabel(workoutType)
     }
 
     private suspend fun loadFriends(friendsMap: Map<String, String>) {

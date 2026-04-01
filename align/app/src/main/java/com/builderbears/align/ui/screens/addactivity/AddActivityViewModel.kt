@@ -228,15 +228,42 @@ class AddActivityViewModel : ViewModel() {
         viewModelScope.launch {
             isLoadingUsers = true
             usersLoadError = null
-            userService.getAllUsers()
-                .onSuccess { users ->
-                    availableUsers = users
-                        .filter { it.userId.isNotBlank() }
-                        .sortedBy { it.name.lowercase() }
+            val userId = currentUserId
+            if (userId.isBlank()) {
+                availableUsers = emptyList()
+                usersLoadError = "Not logged in"
+                isLoadingUsers = false
+                return@launch
+            }
+
+            userService.getUser(userId)
+                .onSuccess { currentUser ->
+                    val acceptedFriendIds = currentUser
+                        ?.friends
+                        .orEmpty()
+                        .filterValues { it == "ACCEPTED" }
+                        .keys
+                        .toList()
+
+                    if (acceptedFriendIds.isEmpty()) {
+                        availableUsers = emptyList()
+                        return@onSuccess
+                    }
+
+                    userService.getUsersByIds(acceptedFriendIds)
+                        .onSuccess { users ->
+                            availableUsers = users
+                                .filter { it.userId.isNotBlank() }
+                                .sortedBy { it.name.lowercase() }
+                        }
+                        .onFailure {
+                            availableUsers = emptyList()
+                            usersLoadError = it.message ?: "Failed to load friends"
+                        }
                 }
                 .onFailure {
                     availableUsers = emptyList()
-                    usersLoadError = it.message ?: "Failed to load users"
+                    usersLoadError = it.message ?: "Failed to load friends"
                 }
             isLoadingUsers = false
         }
@@ -295,7 +322,6 @@ class AddActivityViewModel : ViewModel() {
 
     fun saveActivity(
         name: String,
-        description: String,
         workoutType: String,
         location: String,
         locationDisplayName: String,
@@ -335,7 +361,6 @@ class AddActivityViewModel : ViewModel() {
 
             val activity = Activity(
                 name = name,
-                description = description,
                 workoutType = workoutType,
                 location = location,
                 locationDisplayName = locationDisplayName,
@@ -403,7 +428,6 @@ class AddActivityViewModel : ViewModel() {
     fun updateActivity(
         activityId: String,
         name: String,
-        description: String,
         workoutType: String,
         location: String,
         locationDisplayName: String,
@@ -436,9 +460,28 @@ class AddActivityViewModel : ViewModel() {
                 return@launch
             }
 
-            val selectedInvitees = availableUsers
-                .filter { it.userId in invitedUserIds }
-                .map { ActivityParticipant(userId = it.userId, name = it.name, profilePhotoUrl = it.profilePhotoUrl) }
+            val availableInviteesById = availableUsers
+                .associateBy { it.userId }
+
+            val existingInviteesById = existing.participants
+                .filter { it.userId.isNotBlank() }
+                .associateBy { it.userId }
+
+            val selectedInvitees = invitedUserIds
+                .distinct()
+                .filter { it.isNotBlank() }
+                .mapNotNull { invitedUserId ->
+                    val fromAvailableUsers = availableInviteesById[invitedUserId]
+                    if (fromAvailableUsers != null) {
+                        ActivityParticipant(
+                            userId = fromAvailableUsers.userId,
+                            name = fromAvailableUsers.name,
+                            profilePhotoUrl = fromAvailableUsers.profilePhotoUrl
+                        )
+                    } else {
+                        existingInviteesById[invitedUserId]
+                    }
+                }
 
             val currentUser = availableUsers.firstOrNull { it.userId == currentUserId }
                 ?: userService.getUser(currentUserId).getOrNull()
@@ -467,7 +510,6 @@ class AddActivityViewModel : ViewModel() {
 
             val updates = mutableMapOf<String, Any>(
                 "name" to name,
-                "description" to description,
                 "workoutType" to workoutType,
                 "location" to location,
                 "locationDisplayName" to locationDisplayName,
@@ -485,7 +527,6 @@ class AddActivityViewModel : ViewModel() {
                     saveSuccess = true
                     editingActivity = existing.copy(
                         name = name,
-                        description = description,
                         workoutType = workoutType,
                         location = location,
                         locationDisplayName = locationDisplayName,

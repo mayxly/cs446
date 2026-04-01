@@ -94,6 +94,7 @@ import com.builderbears.align.ui.theme.LightBlue
 import com.builderbears.align.ui.theme.PrimaryBlue
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
+import com.builderbears.align.ui.utils.WorkoutTypeCatalog
 import com.builderbears.align.ui.utils.userColorForId
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -106,10 +107,7 @@ import java.util.Locale
 
 data class Friend(val id: String, val name: String, val handle: String, val profilePhotoUrl: String = "")
 
-private val workoutTypes = listOf(
-    "Run" to "🏃", "Gym" to "🏋️", "Yoga" to "🧘", "Cycle" to "🚴",
-    "Swim" to "🏊", "Basketball" to "🏀", "HIIT" to "🔥", "Other" to "✨"
-)
+private val workoutTypes = WorkoutTypeCatalog.pickerOptions.map { it.label to it.emoji }
 
 @Composable
 fun AddActivityScreen(
@@ -144,7 +142,6 @@ fun AddActivityScreen(
     var selectedLocationLabel by remember { mutableStateOf("") }
     var selectedLocationFullText by remember { mutableStateOf("") }
     var workoutType    by remember { mutableStateOf("Run") }
-    var description    by remember { mutableStateOf("") }
     var invitedFriends by remember { mutableStateOf(setOf<String>() ) }
 
     var showCalendar   by remember { mutableStateOf(false) }
@@ -200,8 +197,7 @@ fun AddActivityScreen(
         lastResolvedLat = activity.locationLat
         lastResolvedLng = activity.locationLng
 
-        workoutType = activity.workoutType.ifBlank { "Run" }
-        description = activity.description
+        workoutType = WorkoutTypeCatalog.displayLabel(activity.workoutType)
         invitedFriends = activity.participantIds
             .filter { it.isNotBlank() && it != currentUserId }
             .toSet()
@@ -230,7 +226,6 @@ fun AddActivityScreen(
             selectedLocationFullText = ""
             viewModel.resetLocationSearchSession()
             workoutType = "Run"
-            description = ""
             invitedFriends = setOf<String>()
             viewModel.saveSuccess = false
             if (isModal) {
@@ -603,36 +598,6 @@ fun AddActivityScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        Row(modifier = Modifier.padding(start = 20.dp, bottom = 8.dp)) {
-            Text("DESCRIPTION", fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.8.sp, color = TextSecondary)
-            Text(" · optional", fontSize = 11.sp, color = TextSecondary)
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(120.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = CardWhite),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            TextField(
-                value = description,
-                onValueChange = { description = it },
-                placeholder = { Text("Add notes, goals, equipment...", color = TextSecondary) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor   = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor   = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
         SectionLabel("INVITE FRIENDS")
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -718,7 +683,7 @@ fun AddActivityScreen(
 
                 friends.isEmpty() -> {
                     Text(
-                        text = "No friends found. Ask others to create accounts first.",
+                        text = "No accepted friends to invite yet.",
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
@@ -839,7 +804,6 @@ fun AddActivityScreen(
                             viewModel.updateActivity(
                                 activityId = activityId.orEmpty(),
                                 name = activityName,
-                                description = description,
                                 workoutType = workoutType,
                                 location = resolvedLocation,
                                 locationDisplayName = resolvedDisplayName,
@@ -854,7 +818,6 @@ fun AddActivityScreen(
                         } else {
                             viewModel.saveActivity(
                                 name = activityName,
-                                description = description,
                                 workoutType = workoutType,
                                 location = resolvedLocation,
                                 locationDisplayName = resolvedDisplayName,

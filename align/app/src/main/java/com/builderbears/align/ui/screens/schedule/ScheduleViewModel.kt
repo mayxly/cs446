@@ -13,14 +13,7 @@ import com.builderbears.align.data.model.MonthGroup
 import com.builderbears.align.data.model.ScheduledDay
 import com.builderbears.align.data.model.ScheduleUiState
 import com.builderbears.align.data.model.WorkoutEvent
-import com.builderbears.align.ui.theme.ScheduleChipAmber
-import com.builderbears.align.ui.theme.ScheduleChipBlue
-import com.builderbears.align.ui.theme.ScheduleChipGray
-import com.builderbears.align.ui.theme.ScheduleChipGreen
-import com.builderbears.align.ui.theme.ScheduleChipMint
-import com.builderbears.align.ui.theme.ScheduleChipOrange
-import com.builderbears.align.ui.theme.ScheduleChipPink
-import com.builderbears.align.ui.theme.ScheduleChipPurple
+import com.builderbears.align.ui.utils.WorkoutTypeCatalog
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -297,17 +290,12 @@ class ScheduleViewModel : ViewModel() {
 	}
 
 	private fun workoutTypeMeta(type: String): TypeMeta {
-		val normalized = type.trim().lowercase(Locale.US)
-		return when (normalized) {
-			"run" -> TypeMeta("🏃", "Run", ScheduleChipGreen)
-			"gym" -> TypeMeta("🏋️", "Gym", ScheduleChipPurple)
-			"yoga" -> TypeMeta("🧘", "Yoga", ScheduleChipPink)
-			"cycle", "cycling" -> TypeMeta("🚴", "Cycle", ScheduleChipMint)
-			"swim", "swimming" -> TypeMeta("🏊", "Swim", ScheduleChipBlue)
-			"basketball" -> TypeMeta("🏀", "Basketball", ScheduleChipOrange)
-			"hiit" -> TypeMeta("🔥", "HIIT", ScheduleChipAmber)
-			else -> TypeMeta("✨", type.ifBlank { "Other" }.replaceFirstChar { it.titlecase(Locale.US) }, ScheduleChipGray)
-		}
+		val option = WorkoutTypeCatalog.option(type)
+		return TypeMeta(
+			emoji = option.emoji,
+			label = option.label,
+			color = option.chipColor
+		)
 	}
 }
 

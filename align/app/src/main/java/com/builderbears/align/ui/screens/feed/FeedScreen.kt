@@ -99,20 +99,12 @@ import com.builderbears.align.ui.theme.LabelMedium
 import com.builderbears.align.ui.theme.LabelSmall
 import com.builderbears.align.ui.theme.Micro
 import com.builderbears.align.ui.theme.NavBarHighlight
-import com.builderbears.align.ui.theme.ScheduleChipAmber
-import com.builderbears.align.ui.theme.ScheduleChipBlue
-import com.builderbears.align.ui.theme.ScheduleChipGray
-import com.builderbears.align.ui.theme.ScheduleChipGreen
-import com.builderbears.align.ui.theme.ScheduleChipMint
-import com.builderbears.align.ui.theme.ScheduleChipOrange
-import com.builderbears.align.ui.theme.ScheduleChipPink
-import com.builderbears.align.ui.theme.ScheduleChipPurple
 import com.builderbears.align.ui.theme.TextMuted
 import com.builderbears.align.ui.theme.TextPrimary
 import com.builderbears.align.ui.theme.TextSecondary
+import com.builderbears.align.ui.utils.WorkoutTypeCatalog
 import com.builderbears.align.ui.utils.buildParticipantNamesAnnotated
 import com.google.firebase.auth.FirebaseAuth
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -353,7 +345,7 @@ private fun ActivityCard(
 
     val isParticipant = currentUserId.isNotBlank() && activity.participantIds.contains(currentUserId)
     val noteCount = activity.participantNotes.values.count { it.isNotBlank() }
-    val workoutChipColor = remember(activity.workoutType) { activity.workoutType.feedWorkoutChipColor() }
+    val workoutChipColor = remember(activity.workoutType) { WorkoutTypeCatalog.chipColor(activity.workoutType) }
 
     Card(
         modifier = Modifier
@@ -452,7 +444,7 @@ private fun ActivityCard(
                             fontSize = 12.sp
                         )
                         Text(
-                            text = activity.workoutType,
+                            text = activity.getWorkoutLabel(),
                             style = LabelSmall.copy(color = TextPrimary)
                         )
                     }
@@ -467,16 +459,6 @@ private fun ActivityCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-
-            if (activity.description.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = activity.description,
-                    style = LabelMedium.copy(color = TextSecondary),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
 
             ActivityPhotoSection(
                 imageUrls = activity.imageUrls,
@@ -1045,17 +1027,4 @@ private fun ExpandedPhotoDialog(
 
 private fun formatNotesCount(count: Int): String {
     return if (count > 10) "10+" else count.toString()
-}
-
-private fun String.feedWorkoutChipColor(): Color {
-    return when (trim().lowercase(Locale.US)) {
-        "run" -> ScheduleChipGreen
-        "gym" -> ScheduleChipPurple
-        "yoga" -> ScheduleChipPink
-        "cycle", "cycling" -> ScheduleChipMint
-        "swim", "swimming" -> ScheduleChipBlue
-        "basketball" -> ScheduleChipOrange
-        "hiit" -> ScheduleChipAmber
-        else -> ScheduleChipGray
-    }
 }

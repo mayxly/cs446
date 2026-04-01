@@ -2,6 +2,7 @@ package com.builderbears.align.ui.screens.feed
 
 import androidx.compose.ui.graphics.Color
 import com.builderbears.align.data.model.Activity
+import com.builderbears.align.ui.utils.WorkoutTypeCatalog
 import com.builderbears.align.ui.utils.userColorForId
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -9,17 +10,10 @@ import java.time.format.DateTimeFormatter
 val defaultReactions = listOf("❤️", "🔥", "💪", "👏", "👍")
 
 fun Activity.getWorkoutEmoji(): String {
-    return when (workoutType.lowercase()) {
-        "run" -> "🏃"
-        "gym" -> "🏋️"
-        "yoga" -> "🧘"
-        "cycle" -> "🚴"
-        "swim" -> "🏊"
-        "basketball" -> "🏀"
-        "hiit" -> "🔥"
-        else -> "✨"
-    }
+    return WorkoutTypeCatalog.emoji(workoutType)
 }
+
+fun Activity.getWorkoutLabel(): String = WorkoutTypeCatalog.displayLabel(workoutType)
 
 fun getColorForUserId(userId: String): Color {
     return userColorForId(userId)
