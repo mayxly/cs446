@@ -7,5 +7,6 @@ data class User(
     val username: String = "",
     val profilePhotoUrl: String = "",
     val pushNotificationsEnabled: Boolean = false,
+    val fcmToken: String = "",
     val friends: Map<String, String> = emptyMap()
 )
