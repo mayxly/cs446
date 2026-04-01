@@ -309,13 +309,13 @@ class AddActivityViewModel : ViewModel() {
             }
         }
 
-        // if (location.isBlank()) {
-        //     locationError = "Location is required"
-        //     isValid = false
-        // } else if (locationPlaceId.isBlank()) {
-        //     locationError = "Please select a location from suggestions"
-        //     isValid = false
-        // }
+        if (location.isBlank()) {
+            locationError = "Location is required"
+            isValid = false
+        } else if (locationPlaceId.isBlank()) {
+            locationError = "Please select a location from suggestions"
+            isValid = false
+        }
 
         return isValid
     }

@@ -7,6 +7,9 @@ import com.builderbears.align.data.model.ActivityParticipant
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -66,6 +69,33 @@ class ActivityService {
         return try {
             val snapshot = activitiesCollection(userId).get().await()
             Result.success(snapshot.toObjects(Activity::class.java))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getActivitiesForUsers(userIds: List<String>): Result<List<Activity>> {
+        return try {
+            if (userIds.isEmpty()) return Result.success(emptyList())
+
+            val activities = coroutineScope {
+                userIds.map { userId ->
+                    async {
+                        try {
+                            activitiesCollection(userId)
+                                .whereEqualTo("isPosted", true)
+                                .get()
+                                .await()
+                                .toObjects(Activity::class.java)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error fetching activities for user $userId", e)
+                            emptyList<Activity>()
+                        }
+                    }
+                }.awaitAll().flatten()
+            }
+
+            Result.success(activities)
         } catch (e: Exception) {
             Result.failure(e)
         }

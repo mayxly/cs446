@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ private const val TAG = "FeedViewModel"
 
 class FeedViewModel : ViewModel() {
     private val activityService = ActivityService()
+    private val userService = UserService()
     private val auth = FirebaseAuth.getInstance()
 
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
@@ -52,14 +54,27 @@ class FeedViewModel : ViewModel() {
                         Log.e(TAG, "Error syncing posted status for $userId: ${exception.message}", exception)
                     }
 
-                val postedActivities = activityService.getActivities(userId)
+                // Get current user's friends list
+                val acceptedFriendIds = userService.getUser(userId)
                     .onFailure { exception ->
-                        Log.e(TAG, "Error loading activities for $userId: ${exception.message}", exception)
+                        Log.e(TAG, "Error loading user for $userId: ${exception.message}", exception)
+                    }
+                    .getOrNull()
+                    ?.friends
+                    ?.filterValues { it == "ACCEPTED" }
+                    ?.keys
+                    ?.toList()
+                    ?: emptyList()
+
+                // Fetch activities from current user and all accepted friends
+                val allUserIds = listOf(userId) + acceptedFriendIds
+                val postedActivities = activityService.getActivitiesForUsers(allUserIds)
+                    .onFailure { exception ->
+                        Log.e(TAG, "Error loading activities for users: ${exception.message}", exception)
                         _error.value = exception.message ?: "Failed to load activities"
                     }
                     .getOrDefault(emptyList())
                     .asSequence()
-                    .filter { it.isPosted }
                     .distinctBy { it.activityId }
                     .sortedByDescending { it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN }
                     .toList()
