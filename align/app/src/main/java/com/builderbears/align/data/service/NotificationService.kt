@@ -50,8 +50,8 @@ object NotificationService {
             context,
             id = 1001,
             channel = CHANNEL_FRIEND_REQUESTS,
-            title = "New Friend Request",
-            body = "$fromName sent you a friend request"
+            title = "New Friend Request \uD83D\uDC4B",
+            body = "$fromName sent you a friend request!"
         )
     }
 
