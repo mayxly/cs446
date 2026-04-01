@@ -1,6 +1,7 @@
 package com.builderbears.align.data.service
 
 import com.builderbears.align.data.model.AppNotification
+import com.builderbears.align.data.model.NotificationType
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -20,7 +21,7 @@ class FriendService {
             inboxService.createNotification(
                 toUserId,
                 AppNotification(
-                    type = "friend_request",
+                    type = NotificationType.FRIEND_REQUEST,
                     fromUserId = fromUserId,
                     fromUserName = fromUserName,
                     message = "requested to follow you",
@@ -57,7 +58,7 @@ class FriendService {
             try {
                 val notifications = usersCollection.document(otherUserId)
                     .collection("notifications")
-                    .whereEqualTo("type", "friend_request")
+                    .whereEqualTo("type", NotificationType.FRIEND_REQUEST)
                     .whereEqualTo("fromUserId", currentUserId)
                     .get().await()
                 for (doc in notifications.documents) {

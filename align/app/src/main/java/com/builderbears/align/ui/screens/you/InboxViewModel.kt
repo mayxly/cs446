@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.AppNotification
+import com.builderbears.align.data.model.isInboxVisible
 import com.builderbears.align.data.service.FriendService
 import com.builderbears.align.data.service.InboxService
 import com.google.firebase.auth.FirebaseAuth
@@ -33,8 +34,9 @@ class InboxViewModel : ViewModel() {
             inboxService.getNotificationsFlow(userId)
                 .catch { e -> Log.e("InboxViewModel", "Listener error", e) }
                 .collect { list ->
-                    _notifications.value = list
-                    _unreadCount.value = list.count { !it.read }
+                    val visible = list.filter { it.isInboxVisible() }
+                    _notifications.value = visible
+                    _unreadCount.value = visible.count { !it.read }
                 }
         }
     }
@@ -71,6 +73,15 @@ class InboxViewModel : ViewModel() {
                     }
                     _unreadCount.value = _notifications.value.count { !it.read }
                 }
+        }
+    }
+
+    fun clearAll() {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            inboxService.clearAll(userId)
+            _notifications.value = emptyList()
+            _unreadCount.value = 0
         }
     }
 

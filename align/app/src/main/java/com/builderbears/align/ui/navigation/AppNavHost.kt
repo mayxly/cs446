@@ -28,8 +28,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
 import com.builderbears.align.data.service.ActivityService
+import com.builderbears.align.data.service.ActivityReminderScheduler
 import com.builderbears.align.ui.screens.addactivity.AddActivityScreen
 import com.builderbears.align.ui.screens.feed.FeedScreen
 import com.builderbears.align.ui.screens.forgotpassword.ForgotPasswordScreen
@@ -71,6 +73,7 @@ private val navItems = listOf(
 @Composable
 fun AlignApp() {
     val activityService = remember { ActivityService() }
+    val context = LocalContext.current
 
     var appState by remember { mutableStateOf(AppState.LOADING) }
 
@@ -92,6 +95,12 @@ fun AlignApp() {
             .onFailure { exception ->
                 Log.e(TAG, "Failed to sync posted status at app launch", exception)
             }
+
+        runCatching {
+            ActivityReminderScheduler.syncForCurrentUser(context.applicationContext)
+        }.onFailure { exception ->
+            Log.e(TAG, "Failed to sync activity reminders", exception)
+        }
     }
 
     when (appState) {
@@ -120,14 +129,10 @@ fun AlignApp() {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
             val inboxViewModel: InboxViewModel = viewModel(key = currentUserId)
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                     NavHost(
                         navController = navController,
+                        modifier = Modifier.fillMaxSize(),
                         startDestination = Route.Feed.path
                     ) {
                         composable(Route.AddActivity.path) { AddActivityScreen(navController, inboxViewModel = inboxViewModel) }
@@ -137,13 +142,12 @@ fun AlignApp() {
                             YouScreen(onLogout = { appState = AppState.LOGIN }, inboxViewModel = inboxViewModel)
                         }
                     }
-                }
 
                 Row(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                        .background(NavBarBackground)
+                        .background(NavBarBackground, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                         .padding(top = 12.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
@@ -154,6 +158,7 @@ fun AlignApp() {
                             icon = item.icon,
                             label = item.label,
                             isSelected = isSelected,
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 navController.navigate(item.route.path) {
                                     popUpTo(Route.Feed.path) { saveState = true }
@@ -196,13 +201,14 @@ private fun BottomNavItem(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val color = if (isSelected) NavBarSelected else NavBarUnselected
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
