@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.service.ActivityService
-import com.builderbears.align.data.service.UserService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +20,6 @@ private const val TAG = "FeedViewModel"
 
 class FeedViewModel : ViewModel() {
     private val activityService = ActivityService()
-    private val userService = UserService()
     private val auth = FirebaseAuth.getInstance()
 
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
@@ -49,45 +47,25 @@ class FeedViewModel : ViewModel() {
             _error.value = null
             val userId = auth.currentUser?.uid
             if (userId != null) {
-                val visibleUserIds = userService.getAllUsers()
+                activityService.syncPostedStatusForUser(userId)
+                    .onFailure { exception ->
+                        Log.e(TAG, "Error syncing posted status for $userId: ${exception.message}", exception)
+                    }
+
+                val postedActivities = activityService.getActivities(userId)
+                    .onFailure { exception ->
+                        Log.e(TAG, "Error loading activities for $userId: ${exception.message}", exception)
+                        _error.value = exception.message ?: "Failed to load activities"
+                    }
                     .getOrDefault(emptyList())
-                    .map { it.userId }
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .let { ids -> if (ids.contains(userId)) ids else ids + userId }
+                    .asSequence()
+                    .filter { it.isPosted }
+                    .distinctBy { it.activityId }
+                    .sortedByDescending { it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN }
+                    .toList()
 
-                if (visibleUserIds.isEmpty()) {
-                    _activities.value = emptyList()
-                } else {
-                    visibleUserIds.forEach { visibleId ->
-                        activityService.syncPostedStatusForUser(visibleId)
-                            .onFailure { exception ->
-                                Log.e(TAG, "Error syncing posted status for $visibleId: ${exception.message}", exception)
-                            }
-                    }
-
-                    val byActivityId = linkedMapOf<String, Activity>()
-                    visibleUserIds.forEach { visibleId ->
-                        activityService.getActivities(visibleId)
-                            .onFailure { exception ->
-                                Log.e(TAG, "Error loading activities for $visibleId: ${exception.message}", exception)
-                            }
-                            .onSuccess { activities ->
-                                activities
-                                    .asSequence()
-                                    .filter { it.isPosted }
-                                    .forEach { activity ->
-                                        byActivityId[activity.activityId] = activity
-                                    }
-                            }
-                    }
-
-                    val postedActivities = byActivityId.values
-                        .sortedByDescending { it.scheduledDateTimeOrNull() ?: LocalDateTime.MIN }
-
-                    _activities.value = postedActivities
-                    Log.d(TAG, "Posted activities loaded successfully. Count: ${postedActivities.size}")
-                }
+                _activities.value = postedActivities
+                Log.d(TAG, "Posted activities loaded successfully. Count: ${postedActivities.size}")
             } else {
                 Log.w(TAG, "User ID is null, cannot load activities")
             }

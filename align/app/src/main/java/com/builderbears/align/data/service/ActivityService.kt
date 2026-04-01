@@ -1,5 +1,6 @@
 package com.builderbears.align.data.service
 
+import android.util.Log
 import android.net.Uri
 import com.builderbears.align.data.model.Activity
 import com.builderbears.align.data.model.ActivityParticipant
@@ -14,6 +15,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class ActivityService {
+    private companion object {
+        const val TAG = "ActivityService"
+    }
+
     private val db = FirebaseFirestore.getInstance()
     private val maxBatchWrites = 400
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
@@ -81,15 +86,25 @@ class ActivityService {
 
             val snapshot = activitiesCollection(userId).get().await()
             val now = LocalDateTime.now()
+            val today = now.toLocalDate()
 
             val pendingWrites = snapshot.documents.mapNotNull { document ->
                 val activity = document.toObject(Activity::class.java) ?: return@mapNotNull null
                 if (activity.activityId.isBlank() || activity.participantIds.isEmpty()) return@mapNotNull null
 
-                val dueByTime = activity.scheduledDateTimeOrNull()?.let { !it.isAfter(now) } == true
+                val hasIsPostedField = document.contains("isPosted")
+                val parsedDate = activity.scheduledDateOrNull()
+                val parsedDateTime = activity.scheduledDateTimeOrNull()
+
+                val dueByTime = when {
+                    parsedDateTime != null -> !parsedDateTime.isAfter(now)
+                    parsedDate != null -> parsedDate.isBefore(today)
+                    else -> false
+                }
+
                 val shouldBePosted = activity.isPosted || dueByTime
 
-                val needsUpdate = shouldBePosted != activity.isPosted
+                val needsUpdate = (shouldBePosted != activity.isPosted) || (!hasIsPostedField && shouldBePosted)
                 if (!needsUpdate) return@mapNotNull null
 
                 val updates = mapOf<String, Any>(
@@ -99,15 +114,33 @@ class ActivityService {
                 activity.activityId to (activity.participantIds.distinct().filter { it.isNotBlank() } to updates)
             }
 
-            pendingWrites.chunked(maxBatchWrites).forEach { chunk ->
-                val batch = db.batch()
-                chunk.forEach { (activityId, payload) ->
+            if (pendingWrites.isNotEmpty()) {
+                pendingWrites.forEach { (activityId, payload) ->
                     val (participantIds, updates) = payload
-                    participantIds.forEach { participantId ->
-                        batch.set(activityDocument(participantId, activityId), updates, SetOptions.merge())
+                    Log.d(
+                        TAG,
+                        "syncPostedStatusForUser pending update activityId=$activityId participantIds=$participantIds updates=$updates"
+                    )
+                }
+            } else {
+                Log.d(TAG, "syncPostedStatusForUser no pending updates for userId=$userId")
+            }
+
+            pendingWrites.forEach { (activityId, payload) ->
+                val (participantIds, updates) = payload
+                participantIds.forEach { participantId ->
+                    runCatching {
+                        activityDocument(participantId, activityId)
+                            .update(updates)
+                            .await()
+                    }.onFailure { error ->
+                        Log.w(
+                            TAG,
+                            "syncPostedStatusForUser skipped write activityId=$activityId participantId=$participantId updates=$updates",
+                            error
+                        )
                     }
                 }
-                batch.commit().await()
             }
 
             Result.success(Unit)
@@ -230,15 +263,21 @@ class ActivityService {
                 .distinctBy { it.userId }
             val newIds = normalizedParticipants.map { it.userId }
 
-            val seedUserId = (oldIds + newIds).firstOrNull()
+            val sourceIds = (oldIds + newIds).distinct()
+            val seedUserId = sourceIds.firstOrNull()
                 ?: return Result.failure(IllegalArgumentException("No participants provided"))
 
             val existingActivity = getActivity(seedUserId, activityId).getOrNull()
                 ?: return Result.failure(IllegalStateException("Activity not found"))
 
+            val isPostedAnywhere = sourceIds.any { sourceUserId ->
+                getActivity(sourceUserId, activityId).getOrNull()?.isPosted == true
+            }
+
             val updatedActivity = existingActivity.copy(
                 participantIds = newIds,
-                participants = normalizedParticipants
+                participants = normalizedParticipants,
+                isPosted = existingActivity.isPosted || isPostedAnywhere
             )
 
             // Upsert for remaining and newly invited participants.
@@ -337,8 +376,12 @@ class ActivityService {
         }
     }
 
+    private fun Activity.scheduledDateOrNull(): LocalDate? {
+        return runCatching { LocalDate.parse(date, dateFormatter) }.getOrNull()
+    }
+
     private fun Activity.scheduledDateTimeOrNull(): LocalDateTime? {
-        val parsedDate = runCatching { LocalDate.parse(date, dateFormatter) }.getOrNull() ?: return null
+        val parsedDate = scheduledDateOrNull() ?: return null
         val parsedTime = runCatching { LocalTime.parse(time.trim().uppercase(Locale.US), timeFormatter) }.getOrNull()
             ?: return null
         return LocalDateTime.of(parsedDate, parsedTime)

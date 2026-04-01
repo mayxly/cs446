@@ -175,7 +175,9 @@ class ScheduleViewModel : ViewModel() {
 			uiState = ScheduleUiState(isLoading = true)
 			activityService.getActivities(userId)
 				.onSuccess { activities ->
-					val groups = mapActivitiesToMonthGroups(activities)
+					val groups = mapActivitiesToMonthGroups(
+						activities.filter { !it.isPosted }
+					)
 					uiState = ScheduleUiState(isLoading = false, groups = groups)
 				}
 				.onFailure { e ->
