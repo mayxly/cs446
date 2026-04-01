@@ -73,6 +73,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -121,6 +124,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxView
     var pendingUploadActivityId by remember { mutableStateOf<String?>(null) }
     var expandedPhotoUrl by remember { mutableStateOf<String?>(null) }
     var notesSheetActivityId by remember { mutableStateOf<String?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -132,10 +136,17 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel(), inboxViewModel: InboxView
         pendingUploadActivityId = null
     }
 
-    // Refresh on screen appear
-    DisposableEffect(Unit) {
-        viewModel.refreshActivities()
-        onDispose { }
+    // Refresh every time this destination returns to the foreground.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshActivities()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Column(
