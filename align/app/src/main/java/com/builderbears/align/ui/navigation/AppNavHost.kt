@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,9 +68,6 @@ private val navItems = listOf(
 
 @Composable
 fun AlignApp() {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
     val activityService = remember { ActivityService() }
 
     var appState by remember { mutableStateOf(AppState.LOADING) }
@@ -114,6 +112,11 @@ fun AlignApp() {
         }
 
         AppState.MAIN -> {
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            key(currentUserId) {
+            val navController = rememberNavController()
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
@@ -158,6 +161,7 @@ fun AlignApp() {
                         )
                     }
                 }
+            }
             }
         }
     }
