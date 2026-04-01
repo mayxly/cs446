@@ -629,6 +629,9 @@ fun YouScreen(
                 inboxViewModel.loadNotifications()
                 viewModel.refreshFriends()
             },
+            onFriendAccepted = {
+                viewModel.refreshFriends()
+            },
             inboxViewModel = inboxViewModel
         )
     }
