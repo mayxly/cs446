@@ -626,10 +626,6 @@ fun YouScreen(
         InboxScreen(
             onDismiss = {
                 showInbox = false
-                viewModel.refreshFriends()
-            },
-            onFriendAccepted = {
-                viewModel.refreshFriends()
             },
             inboxViewModel = inboxViewModel
         )

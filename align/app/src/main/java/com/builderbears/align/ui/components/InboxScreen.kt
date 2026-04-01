@@ -72,7 +72,6 @@ import com.builderbears.align.ui.theme.TextSecondary
 @Composable
 fun InboxScreen(
     onDismiss: () -> Unit,
-    onFriendAccepted: () -> Unit = {},
     inboxViewModel: InboxViewModel
 ) {
     val notifications by inboxViewModel.notifications.collectAsState()
@@ -199,7 +198,6 @@ fun InboxScreen(
                                         onAccept = {
                                             if (notification.type == "friend_request") {
                                                 inboxViewModel.acceptFriendRequest(notification)
-                                                onFriendAccepted()
                                             }
                                         },
                                         onDecline = {
