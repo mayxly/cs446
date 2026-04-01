@@ -1,6 +1,7 @@
 package com.builderbears.align.ui.screens.you
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.builderbears.align.data.model.User
@@ -13,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.DayOfWeek
@@ -72,32 +74,28 @@ class YouViewModel : ViewModel() {
     val searchResults: StateFlow<List<User>> = _searchResults
 
     init {
-        loadUserData()
-    }
-
-    private fun loadUserData() {
+        startUserListener()
         viewModelScope.launch {
             val userId = auth.currentUser?.uid ?: return@launch
-            userService.getUser(userId)
-                .onSuccess { user ->
-                    _user.value = user
-                    _profilePhotoUrl.value = user?.profilePhotoUrl?.takeIf { it.isNotBlank() }
-                    _pushNotificationsEnabled.value = user?.pushNotificationsEnabled ?: false
-                    _friendStatuses.value = user?.friends ?: emptyMap()
-                    loadFriends(user?.friends ?: emptyMap())
-                }
             loadAllOtherUsers(userId)
             loadActivityCounts(userId)
         }
     }
 
-    fun refreshFriends() {
+    private fun startUserListener() {
+        val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            val userId = auth.currentUser?.uid ?: return@launch
-            userService.getUser(userId)
-                .onSuccess { user ->
-                    _friendStatuses.value = user?.friends ?: emptyMap()
-                    loadFriends(user?.friends ?: emptyMap())
+            userService.getUserFlow(userId)
+                .catch { e -> Log.e("YouViewModel", "User listener error", e) }
+                .collect { user ->
+                    _user.value = user
+                    _profilePhotoUrl.value = user?.profilePhotoUrl?.takeIf { it.isNotBlank() }
+                    _pushNotificationsEnabled.value = user?.pushNotificationsEnabled ?: false
+                    val newFriends = user?.friends ?: emptyMap()
+                    if (newFriends != _friendStatuses.value) {
+                        _friendStatuses.value = newFriends
+                        loadFriends(newFriends)
+                    }
                 }
         }
     }

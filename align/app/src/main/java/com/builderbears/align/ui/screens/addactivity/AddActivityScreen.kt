@@ -118,7 +118,7 @@ fun AddActivityScreen(
     isModal: Boolean = false,
     onDismissRequest: (() -> Unit)? = null,
     viewModel: AddActivityViewModel = viewModel(),
-    inboxViewModel: InboxViewModel = viewModel()
+    inboxViewModel: InboxViewModel
 ) {
     val context = LocalContext.current
     val unreadCount by inboxViewModel.unreadCount.collectAsState()
@@ -898,7 +898,6 @@ fun AddActivityScreen(
         InboxScreen(
             onDismiss = {
                 showInbox = false
-                inboxViewModel.loadNotifications()
             },
             inboxViewModel = inboxViewModel
         )

@@ -4,6 +4,9 @@ import android.net.Uri
 import com.builderbears.align.data.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class UserService {
@@ -93,6 +96,18 @@ class UserService {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun getUserFlow(userId: String): Flow<User?> = callbackFlow {
+        val registration = usersCollection.document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObject(User::class.java))
+            }
+        awaitClose { registration.remove() }
     }
 
     suspend fun getUser(userId: String): Result<User?> {
